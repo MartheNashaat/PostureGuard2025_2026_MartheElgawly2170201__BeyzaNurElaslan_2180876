@@ -109,7 +109,8 @@ class PostureAnalyzer {
   // Camera hysteresis for phone-too-low: requires all 4 landmarks to drop
   // back below half the entry threshold before clearing, so a single noisy
   // frame cannot briefly drop the state and let phoneTooHigh flash through.
-  bool _cameraTooLowActive = false;
+  bool _cameraTooLowActive  = false;
+  bool _cameraTooHighActive = false;
 
   // Body-check hysteresis — prevents per-frame flickering on all three checks.
   bool _headTiltActive          = false;
@@ -236,12 +237,24 @@ class PostureAnalyzer {
       _cameraTooLowActive = false;
     }
 
-    final bool cameraPhoneTooHigh =
+    final bool cameraPhoneTooHighRaw =
         ntsDrop < ratioSoft &&
         (landmarks.noseY     - calibration.noseY)     > camThreshold &&
         (landmarks.leftEarY  - calibration.leftEarY)  > camThreshold &&
         (landmarks.rightEarY - calibration.rightEarY) > camThreshold &&
         (camShoulderMidY     - calShoulderMidY)        > camThreshold;
+
+    const double camHighExit = camThreshold * 0.5;
+    if (cameraPhoneTooHighRaw) {
+      _cameraTooHighActive = true;
+    } else if (_cameraTooHighActive &&
+        (ntsDrop >= ratioSoft ||
+         (landmarks.noseY     - calibration.noseY)     < camHighExit ||
+         (landmarks.leftEarY  - calibration.leftEarY)  < camHighExit ||
+         (landmarks.rightEarY - calibration.rightEarY) < camHighExit ||
+         (camShoulderMidY     - calShoulderMidY)        < camHighExit)) {
+      _cameraTooHighActive = false;
+    }
 
     // Camera-confirmed low takes absolute priority: kill the accel-too-high latch
     // so it cannot fire during a noisy frame where _cameraTooLowActive briefly wavers.
@@ -249,7 +262,7 @@ class PostureAnalyzer {
 
     final bool phoneTooLow  = _accelTooLowActive  || _cameraTooLowActive;
     // phoneTooLow (from any source) wins — once low is active, high is suppressed entirely.
-    final bool phoneTooHigh = (_accelTooHighActive || cameraPhoneTooHigh) && !phoneTooLow;
+    final bool phoneTooHigh = (_accelTooHighActive || _cameraTooHighActive) && !phoneTooLow;
 
     // ── Two-level suppression for body checks ─────────────────────────────────
     //
