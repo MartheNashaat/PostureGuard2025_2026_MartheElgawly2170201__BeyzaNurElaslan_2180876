@@ -1,9 +1,10 @@
-// lib/services/feedback_service.dart (UPDATED)
+// lib/services/feedback_service.dart 
 import 'dart:async';
 import 'dart:collection';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:vibration/vibration.dart';
+import '../models/posture_status.dart';
 import '../services/posture_analyzer.dart';
 
 class FeedbackService {
@@ -21,7 +22,8 @@ class FeedbackService {
   DateTime? _lastStreakUpdateTime;
 
   DateTime? _lastSecondCheck;
-  bool _hadViolationThisSecond = false;
+  double _totalScoreThisSecond = 0.0;
+  int _framesThisSecond = 0;
 
   double get scorePercent {
     if (_scoreWindow.isEmpty) return 1.0;
@@ -76,14 +78,13 @@ class FeedbackService {
   void _trackPostureSeverity(PostureAnalysisResult result) {
     final now = DateTime.now();
 
-    if (result.violationMessages.isNotEmpty) {
-      _hadViolationThisSecond = true;
-    }
-
     if (_lastSecondCheck == null ||
         now.difference(_lastSecondCheck!).inMilliseconds >= 1000) {
-      if (_lastSecondCheck != null) {
-        if (_hadViolationThisSecond) {
+      if (_lastSecondCheck != null && _framesThisSecond > 0) {
+        final avgScore = _totalScoreThisSecond / _framesThisSecond;
+        final isBadSecond = avgScore < 50; // Below 50% is bad
+        
+        if (isBadSecond) {
           _consecutiveBadSeconds++;
         } else {
           _consecutiveBadSeconds = 0;
@@ -95,8 +96,12 @@ class FeedbackService {
       }
 
       _lastSecondCheck = now;
-      _hadViolationThisSecond = false;
+      _totalScoreThisSecond = 0;
+      _framesThisSecond = 0;
     }
+
+    _totalScoreThisSecond += result.overallScore;
+    _framesThisSecond++;
   }
 
   void _tryFireAlert(PostureAnalysisResult result) {
@@ -145,7 +150,8 @@ class FeedbackService {
     _goodStreakSeconds = 0;
     _lastStreakUpdateTime = null;
     _lastSecondCheck = null;
-    _hadViolationThisSecond = false;
+    _totalScoreThisSecond = 0;
+    _framesThisSecond = 0;
   }
 
   Future<void> dispose() async {
