@@ -48,7 +48,7 @@ Every frame produces an overall score (0–100 %) averaged from seven per-metric
 
 ### Screen dimming
 
-When score stays below 50 % for 5 seconds, the app dims the phone display itself using the system brightness API (not a screen overlay). Brightness steps down by 10 per 200 ms to a floor of 5. It is fully restored as soon as posture corrects.
+When score stays below 50 % for 5 seconds, the app dims the phone display itself using the system brightness API. Brightness steps down by 10 per 200 ms to a floor of 5. It is fully restored as soon as posture corrects.
 
 ---
 
