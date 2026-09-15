@@ -176,4 +176,35 @@ class DatabaseService {
       orderBy: 'timestamp ASC',
     );
   }
+
+  /// Get a session's events in the order they were *written*, not the order
+  /// their timestamps imply.
+  ///
+  /// [getSessionEvents] sorts by timestamp, which silently repairs a clock
+  /// rewind: rows recorded out of order come back looking monotonic. The
+  /// integrity check needs to see the sequence as it was actually recorded,
+  /// so it orders by the autoincrement id instead.
+  static Future<List<Map<String, dynamic>>> getSessionEventsInWriteOrder(
+      String sessionId) async {
+    final db = await database;
+    return db.query(
+      'posture_events',
+      where: 'session_id = ?',
+      whereArgs: [sessionId],
+      orderBy: 'id ASC',
+    );
+  }
+
+  /// Look up a single stored session summary. Returns null if absent.
+  static Future<SessionSummary?> getSession(String sessionId) async {
+    final db = await database;
+    final rows = await db.query(
+      'sessions',
+      where: 'session_id = ?',
+      whereArgs: [sessionId],
+      limit: 1,
+    );
+    if (rows.isEmpty) return null;
+    return SessionSummary.fromMap(rows.first);
+  }
 }

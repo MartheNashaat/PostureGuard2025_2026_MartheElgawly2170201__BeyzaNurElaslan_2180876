@@ -1,0 +1,1108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PostureGuard Study — Participant Onboarding &amp; Consent</title>
+<style>
+  :root {
+    --bg: #f6f7f9;
+    --surface: #ffffff;
+    --text: #1a1d21;
+    --muted: #5c6470;
+    --line: #d8dde4;
+    --accent: #1f6feb;
+    --accent-soft: #eaf1fe;
+    --warn-bg: #fff8e6;
+    --warn-line: #e6c86b;
+    --ok-bg: #eaf7ee;
+    --ok-line: #6bbf85;
+    --err: #c0392b;
+    --radius: 10px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14161a;
+      --surface: #1c1f25;
+      --text: #e8eaed;
+      --muted: #9aa3b0;
+      --line: #333942;
+      --accent: #5a9bff;
+      --accent-soft: #1c2637;
+      --warn-bg: #2b2415;
+      --warn-line: #7a6426;
+      --ok-bg: #16281c;
+      --ok-line: #34613f;
+      --err: #ff6b5a;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 24px 16px 64px;
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial, sans-serif;
+  }
+  .wrap { max-width: 760px; margin: 0 auto; }
+
+  header.masthead {
+    border-bottom: 3px solid var(--accent);
+    padding-bottom: 16px;
+    margin-bottom: 8px;
+  }
+  header.masthead h1 { font-size: 1.6rem; margin: 0 0 4px; letter-spacing: -0.01em; }
+  header.masthead .sub { color: var(--muted); font-size: 0.95rem; }
+
+  section.card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 22px 24px;
+    margin-top: 20px;
+  }
+  section.card > h2 {
+    font-size: 1.12rem;
+    margin: 0 0 14px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--line);
+  }
+  section.card > h2 .num {
+    display: inline-block;
+    min-width: 26px; height: 26px; line-height: 26px;
+    text-align: center;
+    background: var(--accent); color: #fff;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    margin-right: 10px;
+  }
+  h3 { font-size: 0.98rem; margin: 22px 0 8px; }
+  p { margin: 0 0 12px; }
+  .muted { color: var(--muted); font-size: 0.9rem; }
+
+  .callout {
+    background: var(--accent-soft);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 6px 6px 0;
+    padding: 12px 16px;
+    margin: 14px 0;
+    font-size: 0.94rem;
+  }
+  .callout.warn { background: var(--warn-bg); border-left-color: var(--warn-line); }
+
+  /* Placeholders the research team must fill in before use. */
+  .todo {
+    background: var(--warn-bg);
+    border: 1px dashed var(--warn-line);
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.86em;
+    white-space: nowrap;
+  }
+
+  table.fields {
+    width: 100%; border-collapse: collapse;
+    margin: 12px 0; font-size: 0.9rem;
+  }
+  table.fields th, table.fields td {
+    text-align: left; padding: 7px 10px;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+  }
+  table.fields th { font-weight: 600; width: 34%; }
+  table.fields code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.92em;
+  }
+  .scroll-x { overflow-x: auto; }
+
+  fieldset {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin: 0 0 18px;
+  }
+  legend { font-weight: 600; font-size: 0.95rem; padding: 0 6px; }
+  legend .req { color: var(--err); }
+
+  label.opt {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 7px 0; cursor: pointer;
+  }
+  label.opt input { margin-top: 4px; flex-shrink: 0; width: 17px; height: 17px; }
+  label.opt span { flex: 1; }
+
+  .consent-item {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 13px 14px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    background: var(--bg);
+  }
+  .consent-item:hover { border-color: var(--accent); }
+  .consent-item input { margin-top: 3px; flex-shrink: 0; width: 18px; height: 18px; }
+  .consent-item.optional { border-style: dashed; }
+
+  input[type="text"], input[type="number"], input[type="date"], select, textarea {
+    width: 100%;
+    padding: 9px 11px;
+    font: inherit; font-size: 0.95rem;
+    color: var(--text); background: var(--surface);
+    border: 1px solid var(--line); border-radius: 6px;
+  }
+  input:focus, select:focus, textarea:focus {
+    outline: 2px solid var(--accent); outline-offset: 1px; border-color: var(--accent);
+  }
+  .field { margin-bottom: 16px; }
+  .field > label.q { display: block; font-weight: 600; font-size: 0.95rem; margin-bottom: 6px; }
+  .field .hint { font-size: 0.85rem; color: var(--muted); margin: 0 0 7px; }
+  .req { color: var(--err); }
+  .row { display: flex; gap: 14px; flex-wrap: wrap; }
+  .row > .field { flex: 1 1 220px; }
+
+  .scale { display: flex; gap: 5px; flex-wrap: wrap; }
+  .scale label {
+    flex: 1 1 52px; text-align: center;
+    border: 1px solid var(--line); border-radius: 6px;
+    padding: 8px 2px; cursor: pointer; font-size: 0.88rem;
+  }
+  .scale label:hover { border-color: var(--accent); }
+  .scale input { position: absolute; opacity: 0; width: 0; height: 0; }
+  .scale input:checked + em {
+    font-style: normal; font-weight: 700; color: var(--accent);
+  }
+  .scale label:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
+
+  button {
+    font: inherit; font-weight: 600;
+    padding: 13px 26px;
+    border-radius: 8px; border: 1px solid transparent;
+    cursor: pointer;
+  }
+  button.primary { background: var(--accent); color: #fff; }
+  button.primary:hover { filter: brightness(1.08); }
+  button.primary:disabled { opacity: 0.5; cursor: not-allowed; filter: none; }
+  button.ghost {
+    background: transparent; color: var(--accent); border-color: var(--accent);
+    padding: 10px 18px; font-size: 0.92rem;
+  }
+  button.ghost:hover { background: var(--accent-soft); }
+
+  .errbox {
+    display: none;
+    background: #fdecea; border: 1px solid var(--err); color: #8f2417;
+    border-radius: 8px; padding: 12px 16px; margin: 16px 0; font-size: 0.92rem;
+  }
+  @media (prefers-color-scheme: dark) {
+    .errbox { background: #2d1614; color: #ffb3a8; }
+  }
+  .errbox ul { margin: 6px 0 0; padding-left: 20px; }
+  .field.invalid input, .field.invalid select { border-color: var(--err); }
+  fieldset.invalid { border-color: var(--err); }
+
+  /* ── Confirmation screen ── */
+  #done { display: none; }
+  .idcard {
+    background: var(--ok-bg);
+    border: 2px solid var(--ok-line);
+    border-radius: var(--radius);
+    padding: 26px 24px;
+    text-align: center;
+    margin: 18px 0;
+  }
+  .idcard .caption {
+    text-transform: uppercase; letter-spacing: 0.08em;
+    font-size: 0.74rem; color: var(--muted); margin-bottom: 10px;
+  }
+  .idcard .code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: clamp(1.7rem, 7vw, 2.5rem);
+    font-weight: 700; letter-spacing: 0.06em;
+    word-break: break-all;
+  }
+  .idcard .variant { margin-top: 14px; font-size: 0.95rem; }
+  .idcard .variant b { font-size: 1.05rem; }
+  .actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 16px; }
+  #copyState { font-size: 0.86rem; color: var(--muted); min-height: 1.2em; text-align: center; }
+
+  .recap { font-size: 0.9rem; }
+  .recap dt { font-weight: 600; margin-top: 10px; }
+  .recap dd { margin: 2px 0 0; color: var(--muted); }
+
+  textarea#fallbackJson {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.78rem; min-height: 150px; margin-top: 8px;
+  }
+  #fallback { display: none; }
+
+  @media print {
+    body { background: #fff; color: #000; padding: 0; }
+    .noprint, form { display: none !important; }
+    #done { display: block !important; }
+    section.card { border: none; padding: 0; margin-top: 14px; }
+    .idcard { border: 2px solid #000; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="masthead">
+  <h1>PostureGuard — Participant Onboarding &amp; Consent</h1>
+  <div class="sub">
+    A study on smartphone-based posture feedback ·
+    <span class="todo">[INSTITUTION / DEPARTMENT]</span>
+  </div>
+</header>
+
+<form id="form" novalidate>
+
+  <!-- ══════════════ 1. STUDY INFORMATION ══════════════ -->
+  <section class="card">
+    <h2><span class="num">1</span>About this study</h2>
+
+    <p><b>What is being tested.</b> PostureGuard is a research prototype for Android
+    that monitors sitting posture while you use your phone. It uses the front-facing
+    camera together with the phone's motion sensor to estimate your head and shoulder
+    position, and gives you feedback when your posture degrades.</p>
+
+    <p><b>What we want to find out.</b> We are comparing two different ways of giving
+    that feedback, to learn which one people find more effective and less disruptive:</p>
+    <ul>
+      <li><b>Version A — screen dimming.</b> Your screen gradually darkens when your
+          posture slips, and brightens again when you correct it.</li>
+      <li><b>Version B — posture guide.</b> A faint outline of your own upright
+          posture appears on screen as a reference to match.</li>
+    </ul>
+    <p><b>You will use both versions</b>, one after the other, in an order we assign
+    to you. This lets us compare the two on the same person rather than across
+    different people, which is far more reliable. Both versions measure posture in
+    exactly the same way — only the feedback differs.</p>
+
+    <p><b>What taking part involves.</b></p>
+    <ul>
+      <li>Install the PostureGuard app on your own Android phone
+          (Android 5.0 or newer, front camera required).</li>
+      <li>Enter the participant ID shown to you at the end of this form.</li>
+      <li>Do a one-time calibration: sit in a comfortable, upright posture for
+          about 5 seconds while the app records your personal baseline.</li>
+      <li><b>Phase 1:</b> use the app with the first version during your normal phone
+          use for <span class="todo">[PHASE LENGTH]</span>, with sessions
+          of roughly <span class="todo">[SESSION DURATION]</span>.</li>
+      <li><b>A short break</b> of <span class="todo">[WASHOUT PERIOD]</span>
+          with no app use at all.</li>
+      <li><b>Phase 2:</b> the same again with the second version. We will tell you when
+          and how to switch.</li>
+      <li>Optionally complete a short follow-up questionnaire at the end.</li>
+    </ul>
+    <p class="muted">Total commitment is roughly
+    <span class="todo">[TOTAL DURATION]</span>. Which version you start with is decided
+    by us, not chosen — this is deliberate, and it keeps the comparison fair.</p>
+
+    <p><b>Possible risks and discomforts.</b> The app dims your screen or draws an
+    overlay when it detects poor posture, which some people find distracting. Running
+    the camera continuously uses battery and can make the phone warm. There is no
+    physical risk beyond ordinary phone use. You are free to stop a session, uninstall
+    the app, or leave the study at any point.</p>
+
+    <p><b>Benefits.</b> There is no direct benefit to you, and
+    <span class="todo">[COMPENSATION, or: no compensation is offered]</span>.
+    PostureGuard is a research prototype, not a medical device. It cannot diagnose or
+    treat any condition. If you have persistent neck or back pain, please consult a
+    healthcare professional rather than relying on this app.</p>
+
+    <div class="callout">
+      <b>Who to contact.</b> Researchers:
+      <span class="todo">[RESEARCHER NAMES]</span>,
+      <span class="todo">[CONTACT EMAIL]</span>.
+      This study has been reviewed and approved by
+      <span class="todo">[ETHICS COMMITTEE]</span>, approval reference
+      <span class="todo">[APPROVAL NUMBER]</span>.
+      For questions about your rights as a participant, or to complain, contact
+      <span class="todo">[INDEPENDENT CONTACT / DATA PROTECTION OFFICER]</span>.
+    </div>
+  </section>
+
+  <!-- ══════════════ 2. DATA ══════════════ -->
+  <section class="card">
+    <h2><span class="num">2</span>What data is collected, and what is not</h2>
+
+    <div class="callout warn">
+      <b>The camera runs during every session, but no image ever leaves your phone.</b>
+      Camera frames are analysed on your device, in memory, and discarded immediately.
+      No photo, video, or skeleton image is saved to your phone or uploaded to us. We
+      never see your face, your room, or anyone else in the frame.
+    </div>
+
+    <h3>Sent to our research server</h3>
+    <p class="muted">Once per session, after the session ends — never live.</p>
+    <div class="scroll-x">
+      <table class="fields">
+        <tr><th><code>user_id</code></th>
+            <td>The random participant ID generated at the end of this form.</td></tr>
+        <tr><th><code>session_id</code></th>
+            <td>A random identifier for one monitoring session.</td></tr>
+        <tr><th><code>timestamp</code></th>
+            <td>The time of each posture reading (roughly one per second).</td></tr>
+        <tr><th><code>score</code></th>
+            <td>A posture quality number from 0 to 100.</td></tr>
+        <tr><th><code>zone</code></th>
+            <td>Which quality band that score falls into (good / warning / bad).</td></tr>
+        <tr><th><code>streak</code></th>
+            <td>How many seconds of good posture you held in a row.</td></tr>
+        <tr><th><code>battery</code></th>
+            <td>Your phone's battery level, to measure the app's power cost.</td></tr>
+        <tr><th><code>temperature</code></th>
+            <td>Your phone's temperature, to check the app does not overheat it.</td></tr>
+        <tr><th><code>app_version</code></th>
+            <td>Which build of the app produced the data.</td></tr>
+      </table>
+    </div>
+    <p>Each reading also records which of the two versions produced it, so that the
+    two can be compared. Your answers on this form, your assigned order, and your phone
+    model are stored alongside these, linked by <code>user_id</code>.</p>
+
+    <h3>Never collected</h3>
+    <ul>
+      <li>Photos, video, or camera frames of any kind</li>
+      <li>Skeleton or landmark coordinates</li>
+      <li>Audio or microphone data</li>
+      <li>Location or GPS data</li>
+      <li>Your contacts, messages, browsing, or which other apps you use</li>
+      <li>Any account credentials — the app has no login</li>
+    </ul>
+
+    <h3>How your identity is protected</h3>
+    <p>Your data is <b>pseudonymised</b>, not fully anonymous, and we want to be precise
+    about the difference. Everything sent from the app carries only your random
+    participant ID. However, we keep a separate, access-restricted list linking your
+    name to that ID. We keep it for one reason: so that if you later ask us to delete
+    your data, we can actually find it. Nobody outside the research team can see this
+    list, and it is stored separately from the study data.</p>
+    <p>Anything we publish or share — papers, presentations, datasets — contains only
+    aggregated results or ID-labelled records. Your name never appears.</p>
+
+    <h3>Storage and retention</h3>
+    <p>Data is stored on
+    <span class="todo">[STORAGE LOCATION / PROVIDER / COUNTRY]</span>,
+    accessible only to the named researchers, and kept for
+    <span class="todo">[RETENTION PERIOD]</span>, after which it is deleted or
+    irreversibly anonymised. The legal basis for processing is your consent
+    (<span class="todo">[GDPR Art. 6(1)(a) or applicable basis]</span>).</p>
+
+    <h3>Your right to withdraw</h3>
+    <p>Participation is entirely voluntary. You may stop at any time, without giving a
+    reason and without any disadvantage to you. To withdraw, email
+    <span class="todo">[CONTACT EMAIL]</span> and quote your participant ID — you do
+    not need to explain why. Your data will be deleted, unless it has already been
+    merged into an aggregated analysis that cannot be separated, in which case we will
+    tell you honestly what could and could not be removed. You also have the right to
+    ask what data we hold about you and to have errors corrected.</p>
+
+    <p class="muted"><b>Please keep a copy.</b> At the end of this form you can print or
+    save this page, including your participant ID and this information.</p>
+  </section>
+
+  <!-- ══════════════ 3. CONSENT ══════════════ -->
+  <section class="card">
+    <h2><span class="num">3</span>Your consent</h2>
+    <p class="muted">Please tick each statement separately. The first six are required
+    in order to take part.</p>
+
+    <fieldset id="fs-consent">
+      <legend>Required <span class="req">*</span></legend>
+
+      <label class="consent-item">
+        <input type="checkbox" name="consent_read" data-required-consent>
+        <span>I have read and understood the information above, and I have had the
+        chance to ask questions.</span>
+      </label>
+
+      <label class="consent-item">
+        <input type="checkbox" name="consent_camera" data-required-consent>
+        <span>I understand that the app uses my phone's <b>front camera continuously</b>
+        during monitoring sessions, and that camera images are processed only on my own
+        device and are never stored or uploaded.</span>
+      </label>
+
+      <label class="consent-item">
+        <input type="checkbox" name="consent_upload" data-required-consent>
+        <span>I agree that the session data listed in section 2 may be uploaded to the
+        research server and analysed for this study.</span>
+      </label>
+
+      <label class="consent-item">
+        <input type="checkbox" name="consent_pseudonymous" data-required-consent>
+        <span>I understand my data is <b>pseudonymised</b>: it is labelled with a random
+        ID, and the research team keeps a restricted list linking that ID to my name so
+        that deletion requests can be honoured.</span>
+      </label>
+
+      <label class="consent-item">
+        <input type="checkbox" name="consent_withdraw" data-required-consent>
+        <span>I understand that taking part is voluntary, and that I may withdraw at any
+        time, without giving a reason and without any disadvantage.</span>
+      </label>
+
+      <label class="consent-item">
+        <input type="checkbox" name="consent_age" data-required-consent>
+        <span>I confirm that I am <b>18 years of age or older</b>.</span>
+      </label>
+
+      <label class="consent-item">
+        <input type="checkbox" name="consent_voluntary" data-required-consent>
+        <span>I agree to take part in this study.</span>
+      </label>
+    </fieldset>
+
+    <fieldset>
+      <legend>Optional — you can take part without ticking these</legend>
+      <label class="consent-item optional">
+        <input type="checkbox" name="consent_followup">
+        <span>I am willing to be contacted once after the study for a short follow-up
+        questionnaire.</span>
+      </label>
+      <label class="consent-item optional">
+        <input type="checkbox" name="consent_future">
+        <span>I am willing to be contacted about future related studies.</span>
+      </label>
+      <label class="consent-item optional">
+        <input type="checkbox" name="consent_quotes">
+        <span>I agree that anonymous quotes from my written feedback may appear in
+        publications.</span>
+      </label>
+    </fieldset>
+
+    <h3>Signature</h3>
+    <div class="row">
+      <div class="field" id="f-name">
+        <label class="q" for="full_name">Full name <span class="req">*</span></label>
+        <p class="hint">Kept only on the restricted linking list, never published.</p>
+        <input type="text" id="full_name" name="full_name" autocomplete="name">
+      </div>
+      <div class="field" id="f-email">
+        <label class="q" for="email">Email <span class="req">*</span></label>
+        <p class="hint">Used to send the app, and for withdrawal requests.</p>
+        <input type="text" id="email" name="email" autocomplete="email" inputmode="email">
+      </div>
+    </div>
+    <div class="row">
+      <div class="field" id="f-signature">
+        <label class="q" for="signature">Type your full name as a signature
+          <span class="req">*</span></label>
+        <p class="hint">Typing your name here counts as your signature.</p>
+        <input type="text" id="signature" name="signature">
+      </div>
+      <div class="field" id="f-date">
+        <label class="q" for="signed_date">Date <span class="req">*</span></label>
+        <input type="date" id="signed_date" name="signed_date">
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════ 4. DEMOGRAPHICS ══════════════ -->
+  <section class="card">
+    <h2><span class="num">4</span>About you</h2>
+    <p class="muted">These questions help us interpret the results. Answer honestly —
+    there are no right answers, and nothing here affects whether you can take part.</p>
+
+    <div class="row">
+      <div class="field" id="f-age">
+        <label class="q" for="age">Age <span class="req">*</span></label>
+        <input type="number" id="age" name="age" min="18" max="99" inputmode="numeric">
+      </div>
+      <div class="field" id="f-occupation">
+        <label class="q" for="occupation">Occupation or field of study</label>
+        <input type="text" id="occupation" name="occupation">
+      </div>
+    </div>
+
+    <h3>Screen time</h3>
+    <div class="field" id="f-screen_total">
+      <label class="q" for="screen_total">On a typical day, how many hours do you spend
+        looking at any screen? <span class="req">*</span></label>
+      <p class="hint">Phone, laptop, tablet, and monitors combined — work and leisure.</p>
+      <select id="screen_total" name="screen_total">
+        <option value="">Select…</option>
+        <option>Less than 2 hours</option>
+        <option>2–4 hours</option>
+        <option>4–6 hours</option>
+        <option>6–8 hours</option>
+        <option>8–10 hours</option>
+        <option>More than 10 hours</option>
+      </select>
+    </div>
+    <div class="field" id="f-screen_phone">
+      <label class="q" for="screen_phone">Of that, how many hours are on your
+        <b>phone</b>? <span class="req">*</span></label>
+      <select id="screen_phone" name="screen_phone">
+        <option value="">Select…</option>
+        <option>Less than 1 hour</option>
+        <option>1–2 hours</option>
+        <option>2–4 hours</option>
+        <option>4–6 hours</option>
+        <option>More than 6 hours</option>
+      </select>
+    </div>
+
+    <h3>Neck and back</h3>
+    <div class="field" id="f-pain_freq">
+      <label class="q" for="pain_freq">In the last 12 months, how often have you had
+        neck, shoulder, or back discomfort? <span class="req">*</span></label>
+      <select id="pain_freq" name="pain_freq">
+        <option value="">Select…</option>
+        <option>Never</option>
+        <option>A few times a year</option>
+        <option>About once a month</option>
+        <option>About once a week</option>
+        <option>Several times a week</option>
+        <option>Daily or almost daily</option>
+      </select>
+    </div>
+
+    <fieldset id="fs-pain_area">
+      <legend>Where, if anywhere? Tick all that apply</legend>
+      <label class="opt"><input type="checkbox" name="pain_area" value="Neck"><span>Neck</span></label>
+      <label class="opt"><input type="checkbox" name="pain_area" value="Shoulders"><span>Shoulders</span></label>
+      <label class="opt"><input type="checkbox" name="pain_area" value="Upper back"><span>Upper back</span></label>
+      <label class="opt"><input type="checkbox" name="pain_area" value="Lower back"><span>Lower back</span></label>
+      <label class="opt"><input type="checkbox" name="pain_area" value="None"><span>None of these</span></label>
+    </fieldset>
+
+    <div class="field" id="f-pain_now">
+      <label class="q">How much neck or back discomfort do you have <b>right now</b>?
+        <span class="req">*</span></label>
+      <p class="hint">0 = none at all, 10 = the worst you can imagine.</p>
+      <div class="scale" id="painScale"></div>
+    </div>
+
+    <div class="field" id="f-pain_treatment">
+      <label class="q" for="pain_treatment">Are you currently receiving treatment for a
+        neck or back condition? <span class="req">*</span></label>
+      <select id="pain_treatment" name="pain_treatment">
+        <option value="">Select…</option>
+        <option>No</option>
+        <option>Yes — physiotherapy</option>
+        <option>Yes — medical treatment</option>
+        <option>Yes — other</option>
+        <option>Prefer not to say</option>
+      </select>
+    </div>
+
+    <h3>Your usual setup</h3>
+    <div class="field" id="f-desk_setup">
+      <label class="q" for="desk_setup">Where do you spend most of your screen time?
+        <span class="req">*</span></label>
+      <select id="desk_setup" name="desk_setup">
+        <option value="">Select…</option>
+        <option>Desk with an external monitor</option>
+        <option>Desk with a laptop only</option>
+        <option>Laptop on a table, not a proper desk</option>
+        <option>Laptop on my lap, on a sofa or bed</option>
+        <option>Standing desk</option>
+        <option>Mostly on my phone, no desk</option>
+        <option>Varies a lot / no usual place</option>
+      </select>
+    </div>
+    <div class="field" id="f-chair">
+      <label class="q" for="chair">What do you usually sit on?
+        <span class="req">*</span></label>
+      <select id="chair" name="chair">
+        <option value="">Select…</option>
+        <option>Adjustable office chair</option>
+        <option>Ordinary dining or kitchen chair</option>
+        <option>Sofa or armchair</option>
+        <option>Bed</option>
+        <option>Stool or bench</option>
+        <option>I mostly stand</option>
+      </select>
+    </div>
+    <div class="field" id="f-monitor_height">
+      <label class="q" for="monitor_height">When working, is the top of your screen
+        roughly at eye level? <span class="req">*</span></label>
+      <select id="monitor_height" name="monitor_height">
+        <option value="">Select…</option>
+        <option>Yes, about eye level</option>
+        <option>No, below eye level — I look down</option>
+        <option>No, above eye level — I look up</option>
+        <option>Not sure</option>
+      </select>
+    </div>
+    <div class="field" id="f-phone_hold">
+      <label class="q" for="phone_hold">When using your phone while seated, how do you
+        usually hold it? <span class="req">*</span></label>
+      <select id="phone_hold" name="phone_hold">
+        <option value="">Select…</option>
+        <option>Held up near face level</option>
+        <option>Held at chest level</option>
+        <option>Held low, in my lap — I look down</option>
+        <option>Propped on a stand or table</option>
+        <option>Varies</option>
+      </select>
+    </div>
+    <div class="field" id="f-posture_aware">
+      <label class="q" for="posture_aware">Have you used anything before to improve your
+        posture? <span class="req">*</span></label>
+      <select id="posture_aware" name="posture_aware">
+        <option value="">Select…</option>
+        <option>No, nothing</option>
+        <option>Yes — a posture app</option>
+        <option>Yes — a wearable device or posture corrector</option>
+        <option>Yes — physiotherapy or exercises</option>
+        <option>Yes — an ergonomic chair or desk setup</option>
+      </select>
+    </div>
+  </section>
+
+  <!-- ══════════════ 5. DEVICE ══════════════ -->
+  <section class="card">
+    <h2><span class="num">5</span>Your phone</h2>
+    <p class="muted">Battery and temperature readings differ a lot between phone models,
+    so we need to know which device produced your data.</p>
+    <div class="row">
+      <div class="field" id="f-phone_model">
+        <label class="q" for="phone_model">Phone make and model
+          <span class="req">*</span></label>
+        <p class="hint">For example: Samsung Galaxy S21, Xiaomi Redmi Note 12.</p>
+        <input type="text" id="phone_model" name="phone_model">
+      </div>
+      <div class="field" id="f-android_version">
+        <label class="q" for="android_version">Android version
+          <span class="req">*</span></label>
+        <p class="hint">Settings → About phone → Android version.</p>
+        <input type="text" id="android_version" name="android_version">
+      </div>
+    </div>
+  </section>
+
+  <div class="errbox" id="errors" role="alert" aria-live="assertive"></div>
+
+  <section class="card noprint">
+    <h2><span class="num">6</span>Submit</h2>
+    <p>When you submit, a participant ID will be generated and shown on the next screen.
+    <b>You will need it to use the app</b>, so please write it down, or print the page.</p>
+    <button type="submit" class="primary" id="submitBtn">
+      Give consent and get my participant ID
+    </button>
+  </section>
+</form>
+
+<!-- ══════════════ CONFIRMATION ══════════════ -->
+<div id="done">
+  <section class="card">
+    <h2><span class="num">✓</span>You are registered — thank you</h2>
+
+    <div class="idcard">
+      <div class="caption">Your participant ID</div>
+      <div class="code" id="idOut">—</div>
+      <div class="variant" id="variantOut"></div>
+    </div>
+
+    <p id="copyState" class="noprint"></p>
+    <div class="actions noprint">
+      <button type="button" class="ghost" id="copyBtn">Copy ID</button>
+      <button type="button" class="ghost" id="printBtn">Print / save as PDF</button>
+    </div>
+
+    <h3>What to do next</h3>
+    <ol>
+      <li>Write this ID down, or print this page — it is shown only once, and we cannot
+          recover it for you later.</li>
+      <li>Install PostureGuard on your Android phone using the link we send you.</li>
+      <li>Open the app and enter your participant ID exactly as shown, including the
+          dashes.</li>
+      <li>Complete the 5-second calibration while sitting comfortably upright.</li>
+      <li><b>Phase 1:</b> use the app with your first version for
+          <span class="todo">[PHASE LENGTH]</span>.</li>
+      <li><b>Break:</b> stop using the app for
+          <span class="todo">[WASHOUT PERIOD]</span>. This matters — please do not skip
+          it.</li>
+      <li><b>Phase 2:</b> we will contact you with instructions to switch to your
+          second version, then carry on as before.</li>
+    </ol>
+
+    <div class="callout">
+      <b>To withdraw at any time:</b> email
+      <span class="todo">[CONTACT EMAIL]</span> quoting the ID above. No reason needed.
+    </div>
+
+    <dl class="recap">
+      <dt>Consent recorded</dt>
+      <dd id="recapConsent">—</dd>
+      <dt>Signed</dt>
+      <dd id="recapSigned">—</dd>
+      <dt>Submitted</dt>
+      <dd id="recapTime">—</dd>
+    </dl>
+  </section>
+
+  <section class="card noprint" id="fallback">
+    <h2><span class="num">!</span>Could not reach the server</h2>
+    <p>Your ID above is still valid, but your answers were <b>not</b> saved
+    automatically. Please copy the text below and send it to
+    <span class="todo">[CONTACT EMAIL]</span>, or show this screen to the researcher.</p>
+    <button type="button" class="ghost" id="copyJsonBtn">Copy my responses</button>
+    <textarea id="fallbackJson" readonly></textarea>
+  </section>
+</div>
+
+<p class="muted noprint" style="text-align:center;margin-top:28px;font-size:0.82rem">
+  PostureGuard research prototype · not a medical device
+</p>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  // ═══════════════════════════════════════════════════════════
+  //  CONFIGURATION — set this before using the form for real
+  // ═══════════════════════════════════════════════════════════
+
+  // Google Apps Script Web App URL. See study/README.md for deployment.
+  // Leave as "" to run the form in offline mode (responses shown for manual copy).
+  var ENDPOINT = "";
+
+  // ═══════════════════════════════════════════════════════════
+  //  Participant ID — Crockford Base32 with a Luhn mod-32 check
+  //  character, formatted PG-XXXX-XXXX.
+  //
+  //  Participants type this into the app by hand, so the format is
+  //  chosen for typing, not for machine elegance:
+  //    · I, L, O and U are absent, so there is no 1/I or 0/O confusion
+  //    · 7 random characters => 32^7 ≈ 3.4e10 possible IDs.
+  //      At 100 participants the chance of any collision is ~1.5e-7.
+  //    · the 8th character is a checksum, so the app can reject a
+  //      mistyped ID at entry instead of silently recording orphan
+  //      sessions that can never be joined to this form.
+  // ═══════════════════════════════════════════════════════════
+
+  var ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"; // Crockford, 32 symbols
+  var RANDOM_LEN = 7;
+
+  function randomChars(n) {
+    var out = "";
+    var buf = new Uint8Array(n * 2);
+    (window.crypto || window.msCrypto).getRandomValues(buf);
+    var i = 0;
+    // Rejection sampling: 256 is not a multiple of 32's byte range, so
+    // discard bytes >= 248 to keep every symbol equally likely.
+    for (var b = 0; b < buf.length && i < n; b++) {
+      if (buf[b] < 248) { out += ALPHABET[buf[b] % 32]; i++; }
+    }
+    while (out.length < n) out += ALPHABET[Math.floor(Math.random() * 32)];
+    return out;
+  }
+
+  // Luhn mod N: catches every single-character error and most swaps.
+  function luhnCheckChar(payload) {
+    var n = ALPHABET.length, factor = 2, sum = 0, addend;
+    for (var i = payload.length - 1; i >= 0; i--) {
+      addend = factor * ALPHABET.indexOf(payload[i]);
+      factor = (factor === 2) ? 1 : 2;
+      addend = Math.floor(addend / n) + (addend % n);
+      sum += addend;
+    }
+    return ALPHABET[(n - (sum % n)) % n];
+  }
+
+  function generateParticipantId() {
+    var payload = randomChars(RANDOM_LEN);
+    var body = payload + luhnCheckChar(payload); // 8 characters
+    return "PG-" + body.slice(0, 4) + "-" + body.slice(4);
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  Counterbalanced crossover assignment
+  //
+  //  Every participant uses both versions. What is assigned here is the
+  //  ORDER: "AB" starts with dimming, "BA" starts with the guide.
+  //
+  //  The server is authoritative — Apps Script counts existing rows and
+  //  gives whichever starting order has fewer participants, so the split
+  //  stays even however many people abandon the form. This local value is
+  //  only a fallback for when the server cannot be reached.
+  // ═══════════════════════════════════════════════════════════
+
+  var VARIANT_LABEL = {
+    A: "Version A — screen dimming",
+    B: "Version B — posture guide"
+  };
+
+  function localFallbackSequence() {
+    // Alternates on this browser. Only correct when onboarding happens
+    // on one machine; the server assignment overrides it whenever it answers.
+    try {
+      var n = parseInt(localStorage.getItem("pg_assign_counter") || "0", 10);
+      localStorage.setItem("pg_assign_counter", String(n + 1));
+      return (n % 2 === 0) ? "AB" : "BA";
+    } catch (e) {
+      return randomChars(1).charCodeAt(0) % 2 === 0 ? "AB" : "BA";
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  Pain scale (0–10), built here to keep the markup short
+  // ═══════════════════════════════════════════════════════════
+
+  var scale = document.getElementById("painScale");
+  for (var v = 0; v <= 10; v++) {
+    var lab = document.createElement("label");
+    lab.innerHTML = '<input type="radio" name="pain_now" value="' + v + '"><em>' +
+                    v + "</em>";
+    scale.appendChild(lab);
+  }
+
+  // Default the signature date to today.
+  var today = new Date();
+  document.getElementById("signed_date").value =
+    today.getFullYear() + "-" +
+    String(today.getMonth() + 1).padStart(2, "0") + "-" +
+    String(today.getDate()).padStart(2, "0");
+
+  // ═══════════════════════════════════════════════════════════
+  //  Validation
+  // ═══════════════════════════════════════════════════════════
+
+  var form = document.getElementById("form");
+  var errBox = document.getElementById("errors");
+
+  var REQUIRED_FIELDS = [
+    ["full_name",       "f-name",            "your full name"],
+    ["email",           "f-email",           "your email address"],
+    ["signature",       "f-signature",       "your typed signature"],
+    ["signed_date",     "f-date",            "the date"],
+    ["age",             "f-age",             "your age"],
+    ["screen_total",    "f-screen_total",    "your total daily screen time"],
+    ["screen_phone",    "f-screen_phone",    "your daily phone screen time"],
+    ["pain_freq",       "f-pain_freq",       "how often you have discomfort"],
+    ["pain_treatment",  "f-pain_treatment",  "whether you are receiving treatment"],
+    ["desk_setup",      "f-desk_setup",      "where you spend your screen time"],
+    ["chair",           "f-chair",           "what you sit on"],
+    ["monitor_height",  "f-monitor_height",  "your screen height"],
+    ["phone_hold",      "f-phone_hold",      "how you hold your phone"],
+    ["posture_aware",   "f-posture_aware",   "your previous posture aids"],
+    ["phone_model",     "f-phone_model",     "your phone model"],
+    ["android_version", "f-android_version", "your Android version"]
+  ];
+
+  function clearInvalid() {
+    var marked = form.querySelectorAll(".invalid");
+    for (var i = 0; i < marked.length; i++) marked[i].classList.remove("invalid");
+  }
+
+  function validate() {
+    clearInvalid();
+    var problems = [];
+    var firstBad = null;
+
+    function fail(containerId, message) {
+      var el = document.getElementById(containerId);
+      if (el) {
+        el.classList.add("invalid");
+        if (!firstBad) firstBad = el;
+      }
+      problems.push(message);
+    }
+
+    // Consent: every required box must be ticked.
+    var boxes = form.querySelectorAll("[data-required-consent]");
+    var unticked = 0;
+    for (var i = 0; i < boxes.length; i++) if (!boxes[i].checked) unticked++;
+    if (unticked > 0) {
+      fail("fs-consent", "Please tick all " + boxes.length +
+           " required consent statements (" + unticked + " still unticked).");
+    }
+
+    for (var j = 0; j < REQUIRED_FIELDS.length; j++) {
+      var name = REQUIRED_FIELDS[j][0];
+      var el = form.elements[name];
+      if (!el || !String(el.value).trim()) {
+        fail(REQUIRED_FIELDS[j][1], "Please give " + REQUIRED_FIELDS[j][2] + ".");
+      }
+    }
+
+    if (!form.querySelector('input[name="pain_now"]:checked')) {
+      fail("f-pain_now", "Please rate your current discomfort from 0 to 10.");
+    }
+
+    var age = parseInt(form.elements.age.value, 10);
+    if (form.elements.age.value && (isNaN(age) || age < 18)) {
+      fail("f-age", "You must be 18 or older to take part in this study.");
+    } else if (form.elements.age.value && age > 99) {
+      fail("f-age", "Please enter a valid age.");
+    }
+
+    var email = form.elements.email.value.trim();
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
+      fail("f-email", "That email address does not look valid.");
+    }
+
+    // The signature must match the stated name — a basic integrity check
+    // on the consent record itself.
+    var nm = form.elements.full_name.value.trim().toLowerCase();
+    var sg = form.elements.signature.value.trim().toLowerCase();
+    if (nm && sg && nm !== sg) {
+      fail("f-signature", "Your typed signature must match your full name exactly.");
+    }
+
+    if (problems.length) {
+      errBox.innerHTML = "<b>Please check the following before submitting:</b><ul><li>" +
+                         problems.join("</li><li>") + "</li></ul>";
+      errBox.style.display = "block";
+      (firstBad || errBox).scrollIntoView({ behavior: "smooth", block: "center" });
+      return false;
+    }
+    errBox.style.display = "none";
+    return true;
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  Collect responses
+  // ═══════════════════════════════════════════════════════════
+
+  function collect(userId) {
+    var record = {
+      user_id: userId,
+      submitted_at: new Date().toISOString(),
+      form_version: "1.0"
+    };
+
+    var data = new FormData(form);
+    data.forEach(function (value, key) {
+      if (key === "pain_area") {
+        record.pain_area = (record.pain_area ? record.pain_area + "; " : "") + value;
+      } else {
+        record[key] = value;
+      }
+    });
+    if (!record.pain_area) record.pain_area = "";
+
+    // Checkboxes are absent from FormData when unticked — record them
+    // explicitly, because "consent not given" must be a stored fact rather
+    // than a missing field.
+    var flags = ["consent_read", "consent_camera", "consent_upload",
+                 "consent_pseudonymous", "consent_withdraw", "consent_age",
+                 "consent_voluntary", "consent_followup", "consent_future",
+                 "consent_quotes"];
+    for (var i = 0; i < flags.length; i++) {
+      record[flags[i]] = form.elements[flags[i]].checked ? "yes" : "no";
+    }
+    return record;
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  Submit
+  // ═══════════════════════════════════════════════════════════
+
+  var submitBtn = document.getElementById("submitBtn");
+
+  form.addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    if (!validate()) return;
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Registering…";
+
+    var userId = generateParticipantId();
+    var record = collect(userId);
+
+    send(record).then(function (result) {
+      finish(record, result.sequence || localFallbackSequence(), result.ok);
+    });
+  });
+
+  function send(record) {
+    if (!ENDPOINT) {
+      return Promise.resolve({ ok: false, sequence: null });
+    }
+    // text/plain avoids a CORS preflight, which Apps Script Web Apps
+    // do not answer. Apps Script reads the body from e.postData.contents.
+    return fetch(ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify(record)
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        return { ok: j && j.ok === true, sequence: j && j.sequence };
+      })
+      .catch(function () { return { ok: false, sequence: null }; });
+  }
+
+  function finish(record, sequence, saved) {
+    record.sequence = sequence;
+    record.phase1_variant = sequence.charAt(0);
+    record.phase2_variant = sequence.charAt(1);
+
+    document.getElementById("idOut").textContent = record.user_id;
+    document.getElementById("variantOut").innerHTML =
+      "<div style='margin-bottom:6px'>You will use both versions, in this order:</div>" +
+      "<b>1st &nbsp;·&nbsp; " + VARIANT_LABEL[record.phase1_variant] + "</b><br>" +
+      "<b>2nd &nbsp;·&nbsp; " + VARIANT_LABEL[record.phase2_variant] + "</b>";
+
+    document.getElementById("recapConsent").textContent =
+      "All required consent statements ticked" +
+      (record.consent_followup === "yes" ? "; follow-up contact agreed" : "") +
+      (record.consent_future === "yes" ? "; future studies agreed" : "") +
+      (record.consent_quotes === "yes" ? "; anonymous quotes agreed" : "");
+    document.getElementById("recapSigned").textContent =
+      record.signature + " — " + record.signed_date;
+    document.getElementById("recapTime").textContent =
+      new Date(record.submitted_at).toLocaleString();
+
+    if (!saved) {
+      document.getElementById("fallback").style.display = "block";
+      document.getElementById("fallbackJson").value = JSON.stringify(record, null, 2);
+    }
+
+    form.style.display = "none";
+    document.getElementById("done").style.display = "block";
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  Confirmation screen buttons
+  // ═══════════════════════════════════════════════════════════
+
+  function copyText(text, onDone) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(
+        function () { onDone(true); },
+        function () { onDone(false); }
+      );
+    } else {
+      onDone(false);
+    }
+  }
+
+  document.getElementById("copyBtn").addEventListener("click", function () {
+    var state = document.getElementById("copyState");
+    copyText(document.getElementById("idOut").textContent, function (ok) {
+      state.textContent = ok
+        ? "Copied. Please also write it down somewhere safe."
+        : "Could not copy automatically — please write the ID down by hand.";
+    });
+  });
+
+  document.getElementById("copyJsonBtn").addEventListener("click", function () {
+    var ta = document.getElementById("fallbackJson");
+    copyText(ta.value, function (ok) {
+      if (!ok) { ta.select(); }
+      document.getElementById("copyJsonBtn").textContent =
+        ok ? "Copied" : "Select the text and copy manually";
+    });
+  });
+
+  document.getElementById("printBtn").addEventListener("click", function () {
+    window.print();
+  });
+})();
+</script>
+</body>
+</html>
