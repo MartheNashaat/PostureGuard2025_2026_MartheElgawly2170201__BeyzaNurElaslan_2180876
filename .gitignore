@@ -1,0 +1,10 @@
+# Local implementation notes — not part of the deliverable
+TELEMETRY_INTEGRITY.md
+STUDY_ONBOARDING.md
+
+# Flutter/Dart generated artifacts
+.dart_tool/
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
