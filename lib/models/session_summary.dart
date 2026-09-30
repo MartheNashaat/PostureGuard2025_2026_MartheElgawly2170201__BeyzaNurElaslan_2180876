@@ -7,6 +7,14 @@ class SessionSummary {
   final int longestStreakSeconds;
   final DateTime? worstMomentTimestamp;
 
+  /// Feedback variant code (`A` or `B`). Null for sessions recorded before
+  /// variants existed.
+  final String? variant;
+
+  /// Participant ID (`PG-XXXX-XXXX`). Null for sessions recorded before IDs
+  /// were entered in the app.
+  final String? userId;
+
   const SessionSummary({
     this.id,
     required this.sessionId,
@@ -15,6 +23,8 @@ class SessionSummary {
     required this.goodPosturePercent,
     required this.longestStreakSeconds,
     this.worstMomentTimestamp,
+    this.variant,
+    this.userId,
   });
 
   Map<String, dynamic> toMap() => {
@@ -26,6 +36,8 @@ class SessionSummary {
         'longest_streak': longestStreakSeconds,
         'worst_moment_timestamp':
             worstMomentTimestamp?.millisecondsSinceEpoch,
+        'variant': variant,
+        'user_id': userId,
       };
 
   factory SessionSummary.fromMap(Map<String, dynamic> map) => SessionSummary(
@@ -39,6 +51,8 @@ class SessionSummary {
             ? DateTime.fromMillisecondsSinceEpoch(
                 map['worst_moment_timestamp'] as int)
             : null,
+        variant: map['variant'] as String?,
+        userId: map['user_id'] as String?,
       );
 
   String get formattedDuration {

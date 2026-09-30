@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'models/session_summary.dart';
@@ -7,6 +8,8 @@ import 'screens/session_screen.dart';
 import 'screens/summary_screen.dart';
 import 'screens/history_screen.dart';
 import 'background_service.dart';
+import 'services/window_state_service.dart';
+import 'services/upload_service.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 // void main() {
@@ -20,6 +23,9 @@ void main() async {
   await Permission.notification.request();
   // Initialize the background service configuration
   await initializeService();
+  await WindowStateService.init();
+  // Retry anything left over from an earlier session (e.g. was offline).
+  unawaited(UploadService.flush());
 
   SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   runApp(const PostureGuardApp());
