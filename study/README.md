@@ -6,25 +6,21 @@ linked to each participant's unique user ID."*
 | File | What it is |
 |---|---|
 | `participant_onboarding.html` | The form. Self-contained — no framework, no CDN, no build step. Open it in any browser. |
-| `apps_script_backend.gs` | Google Apps Script that receives submissions, checks the participant ID is free, assigns the A/B order, and writes to a Sheet. |
+| `apps_script_backend.gs` | Google Apps Script that receives submissions, checks the participant ID is free, and writes to a Sheet. |
 | `API_SCHEMA.md` | What the app uploads per session. Section 2 of the form describes the same fields to participants. |
 
 ---
 
 ## Why a web form and not a Google Form
 
-Google Forms cannot show a computed value on its confirmation screen — only
-static text. Even with Apps Script, the `onFormSubmit` trigger fires *after*
-submission and cannot alter the confirmation page. The participant needs to
-see their **assigned phase order** (A then B, or B then A) at the end, which
-is computed by the backend at submission time, so a Google Form can't do it.
+The participant chooses their own ID, and it must follow the app's rule and
+not already be taken. A Google Form can check a pattern, but it cannot check
+the ID against earlier submissions and ask for another one. The HTML form
+also:
 
-The HTML form also:
-
-- checks the participant ID against the app's rule *before* submitting, and
-  tells the participant immediately if the ID is already taken;
-- lets participants print or save their own copy of the signed consent, which
-  ethics committees generally expect;
+- refuses an ID that contains the participant's name or email;
+- shows the ID on the confirmation screen and lets participants print or save
+  their own copy of the signed consent;
 - lays out the consent items as separately tickable statements rather than
   one blanket agreement.
 
@@ -33,7 +29,7 @@ The HTML form also:
 ## Step 1 — Fill in the placeholders (required before real use)
 
 The form ships with every institution-specific detail left blank on purpose.
-Nothing about your university, ethics approval, or contacts was invented.
+Nothing about your university or contacts was invented.
 Each appears as a yellow dashed box in the browser. Search the HTML for `[`
 and replace all of these:
 
@@ -41,13 +37,9 @@ and replace all of these:
 |---|---|
 | `[INSTITUTION / DEPARTMENT]` | University and department running the study |
 | `[RESEARCHER NAMES]` | Both researchers |
-| `[CONTACT EMAIL]` | Study contact address — appears in three places |
-| `[ETHICS COMMITTEE]` | Committee that reviewed the study |
-| `[APPROVAL NUMBER]` | Their approval reference |
+| `[CONTACT EMAIL]` | Study contact address — appears in four places |
 | `[INDEPENDENT CONTACT / DATA PROTECTION OFFICER]` | Independent complaints contact |
-| `[PHASE LENGTH]` | How long each of the two phases lasts, e.g. 5 days — appears twice |
-| `[WASHOUT PERIOD]` | The app-free break between phases, e.g. 2 days — appears twice |
-| `[TOTAL DURATION]` | Phase 1 + washout + phase 2, so participants see the full commitment |
+| `[STUDY LENGTH]` | How long participants use the app, e.g. 7 days — appears twice |
 | `[SESSION DURATION]` | Length of one monitoring session |
 | `[COMPENSATION, or: …]` | Payment, credit, or none |
 | `[STORAGE LOCATION / PROVIDER / COUNTRY]` | Where the data physically lives |
@@ -55,8 +47,10 @@ and replace all of these:
 | `[GDPR Art. 6(1)(a) or applicable basis]` | Legal basis for processing |
 
 > **This is a draft, not legal advice.** The consent wording is modelled on
-> standard practice, but your ethics committee must review and approve the
-> final text before you recruit anyone.
+> standard practice. No ethics committee approval is required for this study;
+> the form states that it is carried out with the approval of the project
+> supervisor, so have the supervisor review the final text before you recruit
+> anyone.
 
 Two decisions are already baked into the wording and should stay consistent
 with what you actually do:
@@ -105,8 +99,8 @@ Open `participant_onboarding.html` and set the URL near the top of the
 var ENDPOINT = "https://script.google.com/macros/s/AKfycb.../exec";
 ```
 
-Left empty, the form still works: it shows the participant's ID, a locally
-alternated phase order, and their answers as JSON for manual copying. It
+Left empty, the form still works: it shows the participant's ID and their
+answers as JSON for manual copying. It
 cannot check whether the ID is already taken in this mode. Useful for
 testing, and as a safety net — a network failure never costs a participant
 their responses.
@@ -120,17 +114,15 @@ the browser. Apps Script reads the body from `e.postData.contents` either way.
 ## Step 4 — Test before recruiting
 
 1. Open the file in a browser and submit once with made-up answers.
-2. Check the Sheet: one row, with a `user_id`, a `variant`, and a
-   `received_at` timestamp.
-3. Submit twice more and confirm the variants balance (A, B, A, B…).
-4. Try to submit with a consent box unticked, and with age 17 — both must be
+2. Check the Sheet: one row, with the `user_id` and a `received_at`
+   timestamp.
+3. Try to submit with a consent box unticked, and with age 17 — both must be
    refused with a message.
-5. Try to reuse an ID from step 1, also with different upper/lower case — it
+4. Try to reuse an ID from step 1, also with different upper/lower case — it
    must be refused as "already taken". Try an ID containing the test name —
    also refused.
-6. Print the confirmation screen to PDF and check the participant ID is legible.
-7. **Delete the test rows before recruiting**, or they will skew the A/B
-   allocation counts.
+5. Print the confirmation screen to PDF and check the participant ID is legible.
+6. **Delete the test rows before recruiting**, or their IDs stay taken.
 
 ---
 
@@ -179,91 +171,34 @@ Mitigations, in order of effort:
 
 1. The confirmation screen tells participants case matters and offers copy
    and print.
-2. At the phase boundary, compare the `user_id`s arriving from the app against
+2. During the study, compare the `user_id`s arriving from the app against
    the Sheet and contact anyone whose sessions don't match.
 3. Once the Section 3 server exists, it can refuse sessions whose `user_id` is
    not registered, and the app can show that error.
 
 ---
 
-## Study design: counterbalanced crossover
+## Study design: one version per participant
 
-**Decided.** Expected recruitment is under 30 participants, which is what
-settles it.
+**Decided 15 October 2026** (see `PROJECT_PLAN.md`, Section 4). Each
+participant chooses **one** feedback version on the app's home screen —
+**A — Dimming** or **B — Baseline** — and uses only that one for the whole
+study. Nothing is assigned by the form or the backend, and there are no
+phases or washout break.
 
-Section 2 of the plan defines two arms — Version A (dimming only) and Version B
-(baseline overlay) — with identical detection and logging. Every participant
-uses **both**, one after the other.
-
-The app also has a **Version C (both at once)**. It is not one of the study's
-two arms and the form never assigns it; see the open question under *What the
-app does* below.
-
-### Why crossover and not between-subjects
-
-Posture varies enormously between people: one participant's baseline score is
-45, another's is 85, and that spread is larger than the difference the study is
-trying to measure. Split 30 participants into two groups of 15 and any
-difference between the group averages could just as easily come from which
-people landed in which group.
-
-In a crossover design each participant is their own control — "this person
-scored 62 under A and 71 under B" — which removes between-person variance
-entirely and needs roughly 2–4× fewer participants for the same statistical
-power. Below 30 participants, between-subjects would most likely produce a
-result too noisy to claim anything from.
-
-### The cost, and how it is handled
-
-Both versions teach posture awareness, so a participant is genuinely better at
-sitting by the time phase 2 begins. Left alone, that improvement would inflate
-whichever version came second.
-
-Two mitigations, both built in:
-
-1. **Counterbalancing.** Half the participants start with A, half with B, so
-   the learning effect lands on both versions equally. `assignSequence()` does
-   this server-side, giving whichever starting order currently has fewer
-   participants and breaking ties at random. Counting live rows rather than
-   keeping a counter keeps the split even when someone abandons the form
-   halfway, and correct if you delete a test row.
-2. **A washout break** between phases, with no app use at all. Set its length
-   in the form's `[WASHOUT PERIOD]` placeholder.
-
-At analysis time, include the starting order as a factor and check whether it
-interacts with the outcome. If it does, that is an order effect and must be
-reported — reviewers at HCI venues expect to see this check.
-
-`LockService` serialises submissions. Without it, two people finishing the form
-in the same second would both read the same counts and both get the same
-starting order.
-
-Run `groupCounts()` from the Apps Script editor during recruitment to see the
-current split.
+This replaces the counterbalanced crossover planned in September, where every
+participant used both versions in an order (AB or BA) assigned by this
+backend.
 
 ### The `variant` field
 
-The same `user_id` produces sessions under both arms, so every uploaded
-session carries `variant` (`A`, `B` or `C`) — see `API_SCHEMA.md`. Without it
-the participants table could not tell you which feedback produced a given
-reading, and that comparison is the entire study.
+The version is not recorded on the form. It arrives with every uploaded
+session as `variant` (`A` or `B`) — see `API_SCHEMA.md` — and that is what
+puts a participant in the A or B group at analysis time.
 
-The participants sheet separately records `sequence` (`AB` or `BA`),
-`phase1_variant` and `phase2_variant`. Comparing those with the `variant` on
-each uploaded session is how you check a participant actually used the
-version they were assigned in each phase.
-
-### What the app does
-
-One APK. Three buttons on the home screen choose the feedback — **A —
-Dimming**, **B — Baseline**, **C — Both** — and the choice is remembered
-between sessions. No session can start until one is chosen.
-
-**Open question:** the participant picks the button, so the app does not
-enforce the order the form assigned. As things stand, the form tells them
-which version to select for phase 1, and the researcher reminds them to switch
-at the phase boundary. Decide before recruiting whether that is enough, or
-whether the app should hide C and/or lock the variant for study participants.
+The app still lets participants change their choice at any time, so tell them
+to keep the version they picked, and check at analysis that each `user_id`
+has a single `variant`. Version C (both) is to be hidden from participants.
 
 ---
 
@@ -275,8 +210,8 @@ real study, split it:
 - **Linking list** — `user_id`, `full_name`, `email`, `signature`,
   `signed_date`. Restricted access, separate file, not shared with anyone
   outside the research team.
-- **Research data** — `user_id`, `variant`, and the demographic and device
-  answers. This is what you analyse and what can be shared or published
+- **Research data** — `user_id` and the demographic and device answers,
+  joined to the sessions (which carry `variant`) on `user_id`. This is what you analyse and what can be shared or published
   alongside the session telemetry.
 
 Keeping them apart is what makes "pseudonymised" true in practice rather than
@@ -295,7 +230,7 @@ function in the HTML needs to change — `send()`. Point `ENDPOINT` at your own
 route and keep the response contract:
 
 ```json
-{ "ok": true, "sequence": "AB" }
+{ "ok": true }
 { "ok": false, "error": "duplicate user_id" }
 ```
 

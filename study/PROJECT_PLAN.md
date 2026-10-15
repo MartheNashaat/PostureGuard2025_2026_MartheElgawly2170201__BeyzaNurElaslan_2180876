@@ -31,10 +31,12 @@ note on what was built or what changed.
 |---|---|---|---|
 | 1 | **Gap-only sessions are uploaded.** Clean sessions are uploaded as before (`is_valid = true`). A session whose only problem is gaps (a few seconds missing because Android throttled the app) is sent with `integrity.is_valid = false` and its `gap_count`. Sessions with out-of-order or duplicate timestamps, missing timestamps, a summary that disagrees with its events, or no events at all stay blocked. | App: the gate/upload rule changes from "block on any issue" to "block unless `hasOnlyGaps`". Server: must accept `is_valid = false`. `study/API_SCHEMA.md` updated. | Marthe (app), Beyza (server) |
 | 2 | **Version C (both) is hidden** from participants for now. Only A and B can be selected. | App: hide the C button. | Marthe |
-| 3 | **Each participant chooses one version and uses only that one.** No assigned order, no second phase, no washout. The participant picks A (Dimming) or B (Baseline) with the buttons on the app's home screen. | Form, Apps Script and `study/README.md`: remove the AB/BA order assignment, the phase and washout text, and the order shown on the confirmation screen. Consent text must describe the new design. | Beyza |
+| 3 | **Each participant chooses one version and uses only that one.** No assigned order, no second phase, no washout. The participant picks A (Dimming) or B (Baseline) with the buttons on the app's home screen. | Form, Apps Script and `study/README.md`: remove the AB/BA order assignment, the phase and washout text, and the order shown on the confirmation screen. Consent text must describe the new design. **Done (form, Apps Script, README).** | Beyza |
+| 4 | **No ethics committee approval is needed** for now. The form says the study is carried out with the approval of the project supervisor. | Ethics placeholders and the ethics-approval steps removed from the form, `study/README.md` and this plan. **Done.** | Beyza |
 
-Nothing is implemented yet — these are recorded here so the code and form can
-be changed later. Each affected task below carries a ⚠️.
+Decisions 3 and 4 are done in the form, Apps Script and `study/README.md`.
+Decisions 1 and 2 still need app changes; each affected task below carries a
+⚠️.
 
 | Status | Meaning |
 |---|---|
@@ -86,13 +88,13 @@ uploaded session. — *Beyza*
 ✅ **DONE** · Prepare user onboarding / consent forms (Google Form or a simple
 web form) linked to each participant's unique user ID. — *Beyza*
 
-> ⚠️ **Decision 3 (15 Oct):** remove the AB/BA order, the phase and washout
-> text, and the order on the confirmation screen from the form, the Apps
-> Script and `study/README.md`; rewrite the study description for the
-> one-version design. Not yet changed.
+> **Decisions 3 and 4 (15 Oct), done:** the AB/BA order, phases and washout
+> are gone; participants are told to choose A or B in the app and keep it. The
+> ethics committee sentence is replaced by "carried out with the approval of
+> the project supervisor".
 >
-> Self-contained HTML form — a Google Form cannot display the assigned phase
-> order on its confirmation screen, which the crossover needed. Covers study
+> Self-contained HTML form — a Google Form cannot check a chosen ID against
+> earlier submissions and ask for another. Covers study
 > description, granular informed consent, the Section 4 demographics, and the
 > participant's **own choice of ID**, checked against the app's rule (6+
 > letters/numbers, case-sensitive). The backend refuses an ID that is already
@@ -274,7 +276,7 @@ onboarding form, with a washout between phases.
 - Hide Version C — Section 2 (Decision 2).
 - Remove the order assignment and phase/washout text from the form, the
   Apps Script and `study/README.md`, and rewrite the consent text for the
-  one-version design (Decision 3).
+  one-version design (Decision 3). *(Done.)*
 - Analysis compares the A group with the B group, using `variant` per
   participant.
 
@@ -357,7 +359,7 @@ required and no consequence.
 
 | When | Who | What |
 |---|---|---|
-| Before recruiting | Beyza | Update the form for Decision 3; fill its placeholders; get ethics approval; deploy the Apps Script backend; run the test submissions in `study/README.md`; delete the test rows |
+| Before recruiting | Beyza | Fill the form's placeholders; have the supervisor review the consent text; deploy the Apps Script backend; run the test submissions in `study/README.md`; delete the test rows |
 | Per participant, at signup | Beyza | Send the form link; the backend checks the ID is free |
 | Per participant, after signup | Marthe | Send the APK; remind them to pick one version and keep it |
 | During the study | Both | Check each participant's uploaded `user_id` matches the Sheet, and that they use a single `variant`. Watch how many choose A vs. B — a very uneven split weakens the comparison |
@@ -386,22 +388,19 @@ at the end.
 
 ### Beyza
 
-1. Update the onboarding form, Apps Script and `study/README.md` for
-   Decision 3: remove the order assignment and phase/washout text, and
-   rewrite the study description and consent text for the one-version design.
-2. Fill in the bracketed placeholders in the form — institution, ethics
-   approval, contact email, retention period, study length. Nothing
+1. Decide study length and session duration — the form cannot be sent out
+   until these are set.
+2. Fill in the bracketed placeholders in the form — institution, contact
+   email, retention period, study length (list in `study/README.md`). Nothing
    institutional was invented; every one is left blank on purpose.
-3. Send the consent text to the ethics committee for approval before
-   recruiting anyone. It is a drafted text, not legal advice.
+3. Have the project supervisor review the consent text before recruiting
+   anyone. It is a drafted text, not legal advice.
 4. Deploy the Apps Script web app, paste its URL into the form, and run the
    test submissions in `study/README.md` (duplicate IDs). Delete the test rows
    afterwards.
 5. Sign off `study/API_SCHEMA.md` before writing any endpoint — still open:
    whether the per-second 0–100 score is needed. The server must accept
    gap-only sessions (`is_valid = false`).
-6. Decide study length and session duration — the form cannot be sent out
-   until these are set.
 
 ### Marthe
 
@@ -435,7 +434,7 @@ terminal-verifiable work to Beyza.
 | `lib/models/integrity_report.dart` | Result types |
 | `test/telemetry_integrity_service_test.dart` | 25 unit tests |
 | `study/participant_onboarding.html` | Onboarding + consent form |
-| `study/apps_script_backend.gs` | Google Sheets backend: ID check (order assignment to be removed, Decision 3) |
+| `study/apps_script_backend.gs` | Google Sheets backend: ID check |
 | `lib/services/participant_service.dart` | Participant ID rule and storage in the app |
 | `lib/services/upload_service.dart` | Upload queue and HTTPS client |
 | `study/README.md` | Setup guide for the form and backend |

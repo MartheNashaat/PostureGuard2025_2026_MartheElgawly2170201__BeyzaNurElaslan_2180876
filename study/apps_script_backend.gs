@@ -1,13 +1,12 @@
 /**
  * PostureGuard study — participant onboarding backend.
  *
- * Receives one submission from participant_onboarding.html, assigns the
- * counterbalanced condition order, and appends a row to the bound Sheet.
+ * Receives one submission from participant_onboarding.html, checks the
+ * participant ID, and appends a row to the bound Sheet.
  *
- * Study design: counterbalanced crossover. Every participant uses both
- * feedback versions, one after the other. Half start with A, half start
- * with B, so that any learning effect from the first phase is spread
- * evenly across both arms instead of favouring whichever came second.
+ * Study design: each participant chooses one feedback version (A or B) in
+ * the app and uses only that one, so nothing is assigned here. The version
+ * arrives with each uploaded session as `variant`.
  *
  * Deploy: Extensions → Apps Script in the target Sheet, paste this file,
  * then Deploy → New deployment → Web app, "Execute as: Me",
@@ -26,15 +25,12 @@ var SHEET_NAME = 'participants';
 var USER_ID_PATTERN = /^[A-Za-z0-9]{6,20}$/;
 
 /**
- * Column order. The first three are produced here, not by the form.
+ * Column order. `received_at` is produced here, not by the form.
  * Adding a question to the form means adding its `name` to this list —
  * nothing else needs to change.
  */
 var COLUMNS = [
   'user_id',
-  'sequence',        // 'AB' or 'BA' — which version the participant starts with
-  'phase1_variant',  // derived from sequence, for convenience when filtering
-  'phase2_variant',
   'received_at',
   'submitted_at',
   'form_version',
@@ -88,7 +84,7 @@ function doPost(e) {
   var lock = LockService.getScriptLock();
 
   // Serialise submissions: two people finishing the form at the same
-  // moment must not read the same arm counts and both get variant A.
+  // moment must not both pass the duplicate-ID check with the same ID.
   try {
     lock.waitLock(30000);
   } catch (err) {
@@ -111,9 +107,6 @@ function doPost(e) {
       return json({ ok: false, error: 'duplicate user_id' });
     }
 
-    record.sequence = assignSequence(sheet);
-    record.phase1_variant = record.sequence.charAt(0);
-    record.phase2_variant = record.sequence.charAt(1);
     record.received_at = new Date().toISOString();
 
     sheet.appendRow(COLUMNS.map(function (key) {
@@ -121,7 +114,7 @@ function doPost(e) {
       return (value === undefined || value === null) ? '' : String(value);
     }));
 
-    return json({ ok: true, sequence: record.sequence });
+    return json({ ok: true });
 
   } catch (err) {
     return json({ ok: false, error: String(err) });
@@ -133,40 +126,6 @@ function doPost(e) {
 /** Browsing to the /exec URL should say something useful, not error. */
 function doGet() {
   return json({ ok: true, service: 'postureguard-onboarding' });
-}
-
-/**
- * Counterbalancing: whichever starting order currently has fewer
- * participants wins, ties broken at random.
- *
- * This is what makes the crossover design valid. Both versions teach
- * posture awareness, so a participant is simply better at sitting by the
- * time the second phase starts. Splitting the starting order evenly means
- * that improvement lands on A and B equally, instead of inflating whichever
- * version everyone happened to use second.
- *
- * Counting live rows rather than keeping a counter means the split stays
- * balanced even if someone abandons the form halfway, and it stays correct
- * if you delete a test row.
- */
-function assignSequence(sheet) {
-  var lastRow = sheet.getLastRow();
-  if (lastRow < 2) {
-    return Math.random() < 0.5 ? 'AB' : 'BA';
-  }
-
-  var col = COLUMNS.indexOf('sequence') + 1;
-  var values = sheet.getRange(2, col, lastRow - 1, 1).getValues();
-
-  var ab = 0, ba = 0;
-  for (var i = 0; i < values.length; i++) {
-    if (values[i][0] === 'AB') ab++;
-    else if (values[i][0] === 'BA') ba++;
-  }
-
-  if (ab < ba) return 'AB';
-  if (ba < ab) return 'BA';
-  return Math.random() < 0.5 ? 'AB' : 'BA';
 }
 
 /**
@@ -209,30 +168,10 @@ function json(obj) {
 }
 
 /**
- * Run this once from the Apps Script editor to confirm the Sheet is
- * writable and the allocation works, then delete the two test rows.
+ * Run this once from the Apps Script editor to authorise the script and
+ * confirm the Sheet is writable.
  */
 function selfTest() {
   var sheet = getSheet();
   Logger.log('Sheet ready: %s, rows: %s', sheet.getName(), sheet.getLastRow());
-  Logger.log('Next assignment would be: %s', assignSequence(sheet));
-}
-
-/**
- * Current counterbalance — run from the editor during recruitment to check
- * the split without opening the Sheet.
- */
-function groupCounts() {
-  var sheet = getSheet();
-  var lastRow = sheet.getLastRow();
-  if (lastRow < 2) { Logger.log('No participants yet.'); return; }
-  var col = COLUMNS.indexOf('sequence') + 1;
-  var values = sheet.getRange(2, col, lastRow - 1, 1).getValues();
-  var ab = 0, ba = 0;
-  values.forEach(function (r) {
-    if (r[0] === 'AB') ab++; else if (r[0] === 'BA') ba++;
-  });
-  Logger.log('Starting with A (AB): %s participants', ab);
-  Logger.log('Starting with B (BA): %s participants', ba);
-  Logger.log('Total: %s', ab + ba);
 }
