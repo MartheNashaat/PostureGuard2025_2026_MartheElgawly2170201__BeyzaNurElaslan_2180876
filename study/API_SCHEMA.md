@@ -3,8 +3,8 @@
 What the app sends to the server at the end of each session. The endpoints
 and database tables should be built against it.
 
-**Status:** proposal, already implemented in the app — agree on it (or change
-it) before writing endpoints.
+**Status:** agreed (16 October 2026). Implemented in the app
+(`lib/services/upload_payload.dart`) and in the server (`backend/`).
 
 ---
 
@@ -131,7 +131,7 @@ temperature, app_version` (+ `variant`). Against what the app actually records:
 | Plan field | What the app has | Suggestion |
 |---|---|---|
 | `zone` | `status` 0/1/2 per second | Same thing — renamed `status` in `events[]`. |
-| `score` | **Not stored per second.** Only the zone is logged; the 0–100 score is shown live but never saved. | Decide whether you need it. If yes, the app can add `score` to each event row — tell Marthe before the upload client is built. |
+| `score` | **Not stored per second.** Only the zone is logged; the 0–100 score is shown live but never saved. | **Decided 16 Oct 2026: not needed.** The zone per second and the session's `good_posture_percent` are enough. |
 | `streak` | Derivable from `events[]` | Only the session's longest streak is sent (`session.longest_streak_seconds`). |
 | `battery`, `temperature` | Every 15 s, not every second | Separate `device_metrics[]` table rather than columns on each event. |
 | — | **New:** CPU %, thermal status, charging, screen, battery saver, app state | Needed for the Section 1 / resource-cost results. |
@@ -139,29 +139,40 @@ temperature, app_version` (+ `variant`). Against what the app actually records:
 
 ---
 
-## Suggested database tables
+## Database tables
 
-Keep identity (names, emails) out of all of these — see the plan's note on the
-restricted linking table.
+As built in `backend/app/models.py`. Identity (names, emails) is kept out of
+all of these — see the plan's note on the restricted linking table.
 
 ```
-sessions        (user_id, session_id, variant, app_version, started_at, ended_at,
-                 duration_seconds, good_posture_percent, longest_streak_seconds,
-                 worst_moment_timestamp, device_model, android_version, cpu_cores,
-                 foreground_fps, pip_fps, gap_count, missing_count,
-                 battery_percent_per_hour, avg_cpu_percent, max_cpu_percent,
-                 avg_battery_temp_c, max_battery_temp_c, worst_thermal_status,
-                 pip_percent, charged_during_session, received_at)
+sessions        (user_id, session_id, variant, app_version, device_id,
+                 started_at, ended_at, duration_seconds, good_posture_percent,
+                 longest_streak_seconds, worst_moment_timestamp,
+                 manufacturer, device_model, android_version, cpu_cores,
+                 foreground_fps, pip_fps, is_valid, gap_count, missing_count,
+                 + every device_metrics_summary field (sample_count stored as
+                   metrics_sample_count), received_at)
                  PRIMARY KEY (user_id, session_id)
 
 posture_events  (user_id, session_id, t, status)
-device_metrics  (user_id, session_id, t, battery_percent, battery_temperature_c,
-                 is_charging, thermal_status, cpu_percent, is_screen_on,
-                 is_power_save, app_state)
+                 PRIMARY KEY (user_id, session_id, t)
+device_metrics  (id, user_id, session_id, t, battery_percent,
+                 battery_temperature_c, is_charging, thermal_status, cpu_percent,
+                 is_screen_on, is_power_save, app_state)
 ```
 
-`device_metrics_summary` can be flattened into `sessions` as shown, so most
-analysis queries only touch one table.
+`device_id` is the `X-Device-Id` header. `device_metrics_summary` is
+flattened into `sessions`, so most analysis queries only touch one table.
+
+## Server responses
+
+| Case | Response |
+|---|---|
+| Clean or gap-only session | `200 {"ok": true}` |
+| Same `(user_id, session_id)` again | `200 {"ok": true, "duplicate": true}` — first copy kept |
+| Payload breaks a rule (bad `user_id` or `variant`, events out of order, `is_valid: false` without gaps, missing timestamps, no events) | `422` with the reason |
+
+A `422` will never succeed on retry; see the note for the app below.
 
 ---
 
@@ -176,3 +187,7 @@ Today every session that fails the integrity check is marked `blocked` in the
 queue and never sent, gaps included. Per the decision of 15 October 2026 this
 changes: gap-only sessions will be sent with `is_valid: false`, and only the
 other failures stay `blocked`. Not yet implemented in the app.
+
+The app currently retries every non-2xx response. A `422` means the payload
+itself is refused, so retrying it changes nothing: the app should mark such a
+session `blocked` (keeping the server's message) instead of `pending`.

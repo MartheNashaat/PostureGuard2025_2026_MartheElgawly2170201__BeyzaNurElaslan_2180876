@@ -1,0 +1,32 @@
+# API + PostgreSQL. Put the password in backend/.env (not committed):
+#   POSTGRES_PASSWORD=change-me
+# then: docker compose up -d --build
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: postureguard
+      POSTGRES_USER: postureguard
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in backend/.env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postureguard"]
+      interval: 5s
+      retries: 10
+
+  api:
+    build: .
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+psycopg://postureguard:${POSTGRES_PASSWORD}@db:5432/postureguard
+    depends_on:
+      db:
+        condition: service_healthy
+    # Local only for now; HTTPS (Nginx) in front of this comes next.
+    ports:
+      - "127.0.0.1:8000:8000"
+
+volumes:
+  pgdata:

@@ -1,0 +1,326 @@
+{
+  "user_id": "Tiger42x",
+  "session_id": "1790599144000",
+  "variant": "A",
+  "app_version": "1.0.0+1",
+  "session": {
+    "started_at": 1790599044000,
+    "ended_at": 1790599104000,
+    "duration_seconds": 60,
+    "good_posture_percent": 33.3,
+    "longest_streak_seconds": 5,
+    "worst_moment_timestamp": 1790599054000
+  },
+  "device": {
+    "manufacturer": "samsung",
+    "model": "SM-A546B",
+    "android_version": "14",
+    "cpu_cores": 10
+  },
+  "detection": {
+    "foreground_fps": 15.0,
+    "pip_fps": 3.0
+  },
+  "integrity": {
+    "is_valid": false,
+    "gap_count": 1,
+    "missing_count": 0
+  },
+  "events": [
+    {
+      "t": 1790599044000,
+      "status": 0
+    },
+    {
+      "t": 1790599045000,
+      "status": 1
+    },
+    {
+      "t": 1790599046000,
+      "status": 2
+    },
+    {
+      "t": 1790599047000,
+      "status": 0
+    },
+    {
+      "t": 1790599048000,
+      "status": 1
+    },
+    {
+      "t": 1790599049000,
+      "status": 2
+    },
+    {
+      "t": 1790599050000,
+      "status": 0
+    },
+    {
+      "t": 1790599051000,
+      "status": 1
+    },
+    {
+      "t": 1790599052000,
+      "status": 2
+    },
+    {
+      "t": 1790599053000,
+      "status": 0
+    },
+    {
+      "t": 1790599054000,
+      "status": 1
+    },
+    {
+      "t": 1790599055000,
+      "status": 2
+    },
+    {
+      "t": 1790599056000,
+      "status": 0
+    },
+    {
+      "t": 1790599057000,
+      "status": 1
+    },
+    {
+      "t": 1790599058000,
+      "status": 2
+    },
+    {
+      "t": 1790599059000,
+      "status": 0
+    },
+    {
+      "t": 1790599060000,
+      "status": 1
+    },
+    {
+      "t": 1790599061000,
+      "status": 2
+    },
+    {
+      "t": 1790599062000,
+      "status": 0
+    },
+    {
+      "t": 1790599063000,
+      "status": 1
+    },
+    {
+      "t": 1790599070000,
+      "status": 2
+    },
+    {
+      "t": 1790599071000,
+      "status": 0
+    },
+    {
+      "t": 1790599072000,
+      "status": 1
+    },
+    {
+      "t": 1790599073000,
+      "status": 2
+    },
+    {
+      "t": 1790599074000,
+      "status": 0
+    },
+    {
+      "t": 1790599075000,
+      "status": 1
+    },
+    {
+      "t": 1790599076000,
+      "status": 2
+    },
+    {
+      "t": 1790599077000,
+      "status": 0
+    },
+    {
+      "t": 1790599078000,
+      "status": 1
+    },
+    {
+      "t": 1790599079000,
+      "status": 2
+    },
+    {
+      "t": 1790599080000,
+      "status": 0
+    },
+    {
+      "t": 1790599081000,
+      "status": 1
+    },
+    {
+      "t": 1790599082000,
+      "status": 2
+    },
+    {
+      "t": 1790599083000,
+      "status": 0
+    },
+    {
+      "t": 1790599084000,
+      "status": 1
+    },
+    {
+      "t": 1790599085000,
+      "status": 2
+    },
+    {
+      "t": 1790599086000,
+      "status": 0
+    },
+    {
+      "t": 1790599087000,
+      "status": 1
+    },
+    {
+      "t": 1790599088000,
+      "status": 2
+    },
+    {
+      "t": 1790599089000,
+      "status": 0
+    },
+    {
+      "t": 1790599090000,
+      "status": 1
+    },
+    {
+      "t": 1790599091000,
+      "status": 2
+    },
+    {
+      "t": 1790599092000,
+      "status": 0
+    },
+    {
+      "t": 1790599093000,
+      "status": 1
+    },
+    {
+      "t": 1790599094000,
+      "status": 2
+    },
+    {
+      "t": 1790599095000,
+      "status": 0
+    },
+    {
+      "t": 1790599096000,
+      "status": 1
+    },
+    {
+      "t": 1790599097000,
+      "status": 2
+    },
+    {
+      "t": 1790599098000,
+      "status": 0
+    },
+    {
+      "t": 1790599099000,
+      "status": 1
+    },
+    {
+      "t": 1790599100000,
+      "status": 2
+    },
+    {
+      "t": 1790599101000,
+      "status": 0
+    },
+    {
+      "t": 1790599102000,
+      "status": 1
+    },
+    {
+      "t": 1790599103000,
+      "status": 2
+    },
+    {
+      "t": 1790599104000,
+      "status": 0
+    }
+  ],
+  "device_metrics": [
+    {
+      "t": 1790599044000,
+      "battery_percent": 80.0,
+      "battery_temperature_c": 30.6,
+      "is_charging": false,
+      "thermal_status": "none",
+      "cpu_percent": null,
+      "is_screen_on": true,
+      "is_power_save": false,
+      "app_state": "foreground"
+    },
+    {
+      "t": 1790599059000,
+      "battery_percent": 79.0,
+      "battery_temperature_c": 30.700000000000003,
+      "is_charging": false,
+      "thermal_status": "none",
+      "cpu_percent": 12.5,
+      "is_screen_on": true,
+      "is_power_save": false,
+      "app_state": "pip"
+    },
+    {
+      "t": 1790599074000,
+      "battery_percent": 78.0,
+      "battery_temperature_c": 30.8,
+      "is_charging": false,
+      "thermal_status": "none",
+      "cpu_percent": 12.5,
+      "is_screen_on": true,
+      "is_power_save": false,
+      "app_state": "pip"
+    },
+    {
+      "t": 1790599089000,
+      "battery_percent": 77.0,
+      "battery_temperature_c": 30.900000000000002,
+      "is_charging": false,
+      "thermal_status": "none",
+      "cpu_percent": 12.5,
+      "is_screen_on": true,
+      "is_power_save": false,
+      "app_state": "pip"
+    },
+    {
+      "t": 1790599104000,
+      "battery_percent": 76.0,
+      "battery_temperature_c": 31.0,
+      "is_charging": false,
+      "thermal_status": "none",
+      "cpu_percent": 12.5,
+      "is_screen_on": true,
+      "is_power_save": false,
+      "app_state": "pip"
+    }
+  ],
+  "device_metrics_summary": {
+    "sample_count": 5,
+    "duration_seconds": 60,
+    "start_battery_percent": 80.0,
+    "end_battery_percent": 76.0,
+    "battery_drop_percent": 4.0,
+    "discharge_seconds": 60,
+    "battery_percent_per_hour": 240.0,
+    "charged_during_session": false,
+    "avg_cpu_percent": 12.5,
+    "max_cpu_percent": 12.5,
+    "avg_battery_temp_c": 30.8,
+    "max_battery_temp_c": 31.0,
+    "worst_thermal_status": "none",
+    "pip_percent": 80.0,
+    "background_percent": 0.0,
+    "power_save_percent": 0.0
+  }
+}
