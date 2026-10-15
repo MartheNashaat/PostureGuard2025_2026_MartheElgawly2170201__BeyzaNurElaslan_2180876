@@ -225,8 +225,6 @@
     font-weight: 700; letter-spacing: 0.06em;
     word-break: break-all;
   }
-  .idcard .variant { margin-top: 14px; font-size: 0.95rem; }
-  .idcard .variant b { font-size: 1.05rem; }
   .actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 16px; }
   #copyState { font-size: 0.86rem; color: var(--muted); min-height: 1.2em; text-align: center; }
 
@@ -279,10 +277,9 @@
       <li><b>Version B — baseline guide.</b> A faint outline of your own upright
           posture appears on screen as a reference to match.</li>
     </ul>
-    <p><b>You will use both versions</b>, one after the other, in an order we assign
-    to you. This lets us compare the two on the same person rather than across
-    different people, which is far more reliable. Both versions measure posture in
-    exactly the same way — only the feedback differs.</p>
+    <p><b>You choose one of the two versions</b> in the app and use only that one for
+    the whole study. Both versions measure posture in exactly the same way — only the
+    feedback differs.</p>
 
     <p><b>What taking part involves.</b></p>
     <ul>
@@ -294,29 +291,23 @@
       <li>Enter the participant ID you choose at the end of this form.</li>
       <li>Do a one-time calibration: sit in a comfortable, upright posture for
           about 5 seconds while the app records your personal baseline.</li>
-      <li><b>Phase 1:</b> select your first version on the app's home screen, then use
-          the app during your normal phone use for <span class="todo">[PHASE LENGTH]</span>, with sessions
-          of roughly <span class="todo">[SESSION DURATION]</span>.</li>
+      <li>Choose <b>Version A — Dimming</b> or <b>Version B — Baseline</b> on the app's
+          home screen, and keep the same one for the whole study.</li>
+      <li>Use the app during your normal phone use for
+          <span class="todo">[STUDY LENGTH]</span>, with sessions of roughly
+          <span class="todo">[SESSION DURATION]</span>.</li>
       <li>During a session the app shrinks to a <b>small floating window</b> while you
           use other apps — this is when feedback appears. If you close that window,
           the app keeps checking only your phone's tilt with the motion sensor, and
           the camera turns off.</li>
-      <li><b>A short break</b> of <span class="todo">[WASHOUT PERIOD]</span>
-          with no app use at all.</li>
-      <li><b>Phase 2:</b> the same again with the second version. We will tell you when
-          and how to switch.</li>
       <li>Optionally complete a short follow-up questionnaire at the end.</li>
     </ul>
-    <p class="muted">Total commitment is roughly
-    <span class="todo">[TOTAL DURATION]</span>. Which version you start with is decided
-    by us, not chosen — this is deliberate, and it keeps the comparison fair.</p>
 
     <p><b>Possible risks and discomforts.</b> The app dims your screen or draws an
     overlay when it detects poor posture, which some people find distracting. The app
     keeps your screen on during a session, and running the camera uses battery and
     can make the phone warm — in our tests the battery dropped by roughly 14–21% per
-    hour of use. There is no
-    physical risk beyond ordinary phone use. You are free to stop a session, uninstall
+    hour of use. There is no physical risk beyond ordinary phone use. You are free to stop a session, uninstall
     the app, or leave the study at any point.</p>
 
     <p><b>Benefits.</b> There is no direct benefit to you, and
@@ -329,9 +320,7 @@
       <b>Who to contact.</b> Researchers:
       <span class="todo">[RESEARCHER NAMES]</span>,
       <span class="todo">[CONTACT EMAIL]</span>.
-      This study has been reviewed and approved by
-      <span class="todo">[ETHICS COMMITTEE]</span>, approval reference
-      <span class="todo">[APPROVAL NUMBER]</span>.
+      This study is carried out with the approval of the project supervisor.
       For questions about your rights as a participant, or to complain, contact
       <span class="todo">[INDEPENDENT CONTACT / DATA PROTECTION OFFICER]</span>.
     </div>
@@ -357,7 +346,7 @@
         <tr><th><code>session_id</code></th>
             <td>An identifier for one monitoring session (its start time).</td></tr>
         <tr><th><code>variant</code></th>
-            <td>Which feedback version was active during the session.</td></tr>
+            <td>Which feedback version you chose (A or B).</td></tr>
         <tr><th>Posture readings</th>
             <td>Once per second: the time and the posture zone (good / warning / bad).
             Your 0–100 score is shown live in the app but not stored or sent.</td></tr>
@@ -380,8 +369,8 @@
             <td>The result of an automatic check that no readings are missing.</td></tr>
       </table>
     </div>
-    <p>Your answers on this form and your assigned order are stored alongside these,
-    linked by <code>user_id</code>.</p>
+    <p>Your answers on this form are stored alongside these, linked by
+    <code>user_id</code>.</p>
 
     <h3>Kept only on your phone</h3>
     <p>Your session history and the measurements above are also stored inside the app
@@ -731,7 +720,6 @@
     <div class="idcard">
       <div class="caption">Your participant ID</div>
       <div class="code" id="idOut">—</div>
-      <div class="variant" id="variantOut"></div>
     </div>
 
     <p id="copyState" class="noprint"></p>
@@ -747,14 +735,10 @@
       <li>Open the app and enter your participant ID exactly as shown — upper and
           lower case matter.</li>
       <li>Complete the 5-second calibration while sitting comfortably upright.</li>
-      <li><b>Phase 1:</b> on the app's home screen, select your first version (shown
-          above), then use the app for
-          <span class="todo">[PHASE LENGTH]</span>.</li>
-      <li><b>Break:</b> stop using the app for
-          <span class="todo">[WASHOUT PERIOD]</span>. This matters — please do not skip
-          it.</li>
-      <li><b>Phase 2:</b> we will remind you to select your second version on the
-          home screen, then carry on as before.</li>
+      <li>On the app's home screen, choose <b>Version A — Dimming</b> or
+          <b>Version B — Baseline</b>. Keep the same one for the whole study.</li>
+      <li>Use the app during your normal phone use for
+          <span class="todo">[STUDY LENGTH]</span>.</li>
     </ol>
 
     <div class="callout">
@@ -809,35 +793,6 @@
   // ═══════════════════════════════════════════════════════════
 
   var USER_ID_PATTERN = /^[A-Za-z0-9]{6,20}$/;
-
-  // ═══════════════════════════════════════════════════════════
-  //  Counterbalanced crossover assignment
-  //
-  //  Every participant uses both versions. What is assigned here is the
-  //  ORDER: "AB" starts with dimming, "BA" starts with the guide.
-  //
-  //  The server is authoritative — Apps Script counts existing rows and
-  //  gives whichever starting order has fewer participants, so the split
-  //  stays even however many people abandon the form. This local value is
-  //  only a fallback for when the server cannot be reached.
-  // ═══════════════════════════════════════════════════════════
-
-  var VARIANT_LABEL = {
-    A: "Version A — Dimming",
-    B: "Version B — Baseline"
-  };
-
-  function localFallbackSequence() {
-    // Alternates on this browser. Only correct when onboarding happens
-    // on one machine; the server assignment overrides it whenever it answers.
-    try {
-      var n = parseInt(localStorage.getItem("pg_assign_counter") || "0", 10);
-      localStorage.setItem("pg_assign_counter", String(n + 1));
-      return (n % 2 === 0) ? "AB" : "BA";
-    } catch (e) {
-      return Math.random() < 0.5 ? "AB" : "BA";
-    }
-  }
 
   // ═══════════════════════════════════════════════════════════
   //  Pain scale (0–10), built here to keep the markup short
@@ -986,7 +941,7 @@
   function collect() {
     var record = {
       submitted_at: new Date().toISOString(),
-      form_version: "1.1"
+      form_version: "1.2"
     };
 
     var data = new FormData(form);
@@ -1039,13 +994,13 @@
         field.scrollIntoView({ behavior: "smooth", block: "center" });
         return;
       }
-      finish(record, result.sequence || localFallbackSequence(), result.ok);
+      finish(record, result.ok);
     });
   });
 
   function send(record) {
     if (!ENDPOINT) {
-      return Promise.resolve({ ok: false, sequence: null });
+      return Promise.resolve({ ok: false });
     }
     // text/plain avoids a CORS preflight, which Apps Script Web Apps
     // do not answer. Apps Script reads the body from e.postData.contents.
@@ -1056,22 +1011,13 @@
     })
       .then(function (r) { return r.json(); })
       .then(function (j) {
-        return { ok: j && j.ok === true, sequence: j && j.sequence,
-                 error: j && j.error };
+        return { ok: j && j.ok === true, error: j && j.error };
       })
-      .catch(function () { return { ok: false, sequence: null }; });
+      .catch(function () { return { ok: false }; });
   }
 
-  function finish(record, sequence, saved) {
-    record.sequence = sequence;
-    record.phase1_variant = sequence.charAt(0);
-    record.phase2_variant = sequence.charAt(1);
-
+  function finish(record, saved) {
     document.getElementById("idOut").textContent = record.user_id;
-    document.getElementById("variantOut").innerHTML =
-      "<div style='margin-bottom:6px'>You will use both versions, in this order:</div>" +
-      "<b>1st &nbsp;·&nbsp; " + VARIANT_LABEL[record.phase1_variant] + "</b><br>" +
-      "<b>2nd &nbsp;·&nbsp; " + VARIANT_LABEL[record.phase2_variant] + "</b>";
 
     document.getElementById("recapConsent").textContent =
       "All required consent statements ticked" +
