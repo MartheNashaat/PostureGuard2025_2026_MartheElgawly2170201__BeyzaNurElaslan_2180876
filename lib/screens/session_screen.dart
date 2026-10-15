@@ -4,14 +4,22 @@ import 'package:camera/camera.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../config.dart';
 import '../models/calibration_data.dart';
+import '../models/feedback_variant.dart';
 import '../models/posture_status.dart';
 import '../services/camera_service.dart';
 import '../services/calibration_service.dart';
 import '../services/database_service.dart';
 import '../services/detection_service.dart';
 import '../services/feedback_service.dart';
+import '../services/frame_rate_limiter.dart';
 import '../services/posture_analyzer.dart';
+import '../services/session_metrics_recorder.dart';
+import '../services/variant_service.dart';
+import '../services/participant_service.dart';
+import '../services/upload_service.dart';
+import '../services/window_state_service.dart';
 import '../widgets/ambient_border.dart';
 import '../widgets/camera_preview.dart' show CameraFeedView;
 import '../widgets/score_meter.dart';
@@ -43,8 +51,18 @@ class _SessionScreenState extends State<SessionScreen> with WidgetsBindingObserv
   PostureStatus _currentStatus = PostureStatus.good;
   PostureAnalysisResult _currentResult = PostureAnalysisResult.good;
 
+  final FrameRateLimiter _foregroundLimiter = FrameRateLimiter(AppConfig.foregroundDetectionFps);
+  final FrameRateLimiter _pipLimiter = FrameRateLimiter(AppConfig.pipDetectionFps);
+
   late final String _sessionId;
+
+  /// Feedback mode for this session: A dims the screen, B shows the ghost
+  /// overlay, C does both. The "overlay showing" flags below track feedback
+  /// state in every mode — only the native overlay call is skipped under A.
+  late final FeedbackVariant _variant;
+  late final String _participantId;
   Timer? _logTimer;
+  SessionMetricsRecorder? _metricsRecorder;
   bool _isEnding = false;
 
   final Stopwatch _stopwatch = Stopwatch();
@@ -82,6 +100,16 @@ class _SessionScreenState extends State<SessionScreen> with WidgetsBindingObserv
 
   // Combined score: only high when BOTH camera position AND phone angle match baseline.
   double get _combinedScore => _currentScore < _currentAngleScore ? _currentScore : _currentAngleScore;
+  /// Status written to the 1 Hz log. With PiP closed the camera is stopped,
+  /// so camera-based status is frozen at its last value; only the phone angle
+  /// is live, and it alone decides the status (same 80/50 thresholds).
+  PostureStatus get _loggedStatus {
+    if (!WindowStateService.isBackground) return _currentStatus;
+    if (_currentAngleScore >= 80) return PostureStatus.good;
+    if (_currentAngleScore >= 50) return PostureStatus.warning;
+    return PostureStatus.bad;
+  }
+
   PostureStatus get _combinedStatus {
     if (_combinedScore >= 80) return PostureStatus.good;
     if (_combinedScore >= 50) return PostureStatus.warning;
@@ -121,6 +149,18 @@ Future<void> _init() async {
   _sessionId = DateTime.now().millisecondsSinceEpoch.toString();
 
   try {
+    final variant = await VariantService.get();
+    if (variant == null) {
+      if (mounted) setState(() { _isLoading = false; _error = 'Choose a feedback mode on the home screen first'; });
+      return;
+    }
+    _variant = variant;
+    final participantId = await ParticipantService.get();
+    if (participantId == null) {
+      if (mounted) setState(() { _isLoading = false; _error = 'Enter your participant ID on the home screen first'; });
+      return;
+    }
+    _participantId = participantId;
     await _requestOverlayPermission();
     await _requestWriteSettingsPermission();
     _calibration = await CalibrationService.load();
@@ -174,6 +214,8 @@ Future<void> _init() async {
 void _startDetection() {
   _cameraService.startImageStream((CameraImage image) async {
     if (_isEnding || !mounted) return;
+    final limiter = _isPipMode ? _pipLimiter : _foregroundLimiter;
+    if (!limiter.shouldProcess()) return;
     final desc = _cameraService.cameraDescription;
     if (desc == null) return;
 
@@ -241,10 +283,14 @@ void _startDetection() {
             // Show native overlay in PiP / background at t+5s
             if (_isPipMode && !_isShowingOverlay) {
               _isShowingOverlay = true;
-              await OverlayService.showGhostOverlay(_currentScore.round(), "bad");
+              if (_variant.usesOverlay) {
+                await OverlayService.showGhostOverlay(_currentScore.round(), "bad");
+              }
             }
             // Dimming only in PiP mode for camera-posture violations
-            if (mounted && _isPipMode && _currentScore < 70) unawaited(_startDimTimers());
+            if (mounted && _variant.usesDimming && _isPipMode && _currentScore < 70) {
+              unawaited(_startDimTimers());
+            }
           });
         }
       } else {
@@ -305,9 +351,11 @@ void didChangeAppLifecycleState(AppLifecycleState state) {
         _currentScore < 70 &&
         _badPostureTimer != null &&
         !_badPostureTimer!.isActive) {
-      OverlayService.showGhostOverlay(_currentScore.round(), "bad");
+      if (_variant.usesOverlay) {
+        OverlayService.showGhostOverlay(_currentScore.round(), "bad");
+      }
       _isShowingOverlay = true;
-      unawaited(_startDimTimers());
+      if (_variant.usesDimming) unawaited(_startDimTimers());
     }
     _stopwatch.stop();
   } else if (state == AppLifecycleState.resumed) {
@@ -416,10 +464,11 @@ void didChangeAppLifecycleState(AppLifecycleState state) {
         if (!mounted || !_isAngleBad) return;
         if (_isPipMode && !_isAngleOverlayShowing && !_isShowingOverlay) {
           _isAngleOverlayShowing = true;
-          await OverlayService.showGhostOverlay(_currentAngleScore.round(), "bad");
+          if (_variant.usesOverlay) {
+            await OverlayService.showGhostOverlay(_currentAngleScore.round(), "bad");
+          }
         }
-        // Dimming starts immediately after the ghost skeleton appears
-        if (mounted && _isAngleBad) unawaited(_startDimTimers());
+        if (mounted && _variant.usesDimming && _isAngleBad) unawaited(_startDimTimers());
       });
     } else if (_isAngleOverlayShowing) {
       // Overlay visible — update score live every tick
@@ -511,6 +560,7 @@ void didChangeAppLifecycleState(AppLifecycleState state) {
     });
 
     _logTimer?.cancel();
+    await _metricsRecorder?.stop();
     _elapsedTimer?.cancel();
     _angleBadTimer?.cancel();
     _accelSubscription?.cancel();
@@ -523,7 +573,13 @@ void didChangeAppLifecycleState(AppLifecycleState state) {
     await _cameraService.stopImageStream();
     await _cameraService.dispose();
 
-    final summary = await DatabaseService.endSession(_sessionId);
+    final summary = await DatabaseService.endSession(
+      _sessionId,
+      variant: _variant.code,
+      userId: _participantId,
+    );
+    await SessionMetricsRecorder.exportSession(_sessionId);
+    await UploadService.enqueueAndFlush(_sessionId);
     if (mounted) {
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
       Navigator.pushReplacementNamed(context, '/summary', arguments: summary);
@@ -608,6 +664,8 @@ void didChangeAppLifecycleState(AppLifecycleState state) {
   }
   Widget _buildBody() {
   final controller = _cameraService.controller;
+
+  if (_error != null) return _buildErrorView();
 
   if (_isLoading || controller == null || !controller.value.isInitialized) {
     return const Center(child: CircularProgressIndicator());
@@ -1098,8 +1156,13 @@ Widget _buildControls() {
 
   void _startLogging() {
     _logTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      DatabaseService.logEvent(sessionId: _sessionId, status: _currentStatus);
+      DatabaseService.logEvent(sessionId: _sessionId, status: _loggedStatus);
     });
+    _metricsRecorder = SessionMetricsRecorder(
+      sessionId: _sessionId,
+      appState: () => WindowStateService.state.value,
+    );
+    unawaited(_metricsRecorder!.start());
   }
 
   void _startElapsedTimer() {
@@ -1141,6 +1204,7 @@ void dispose() {
   _accelSubscription?.cancel();
   _dimTimer?.cancel();
   _logTimer?.cancel();
+  _metricsRecorder?.cancel();
   _elapsedTimer?.cancel();
   unawaited(_restoreScreenSleep());
   WidgetsBinding.instance.removeObserver(this);

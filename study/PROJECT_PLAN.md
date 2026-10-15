@@ -8,12 +8,13 @@ note on what was built or what changed.
 
 ## Where the project stands
 
-- **Done** — telemetry integrity checks (Section 1) and the participant
-  onboarding / consent form (Sections 1 and 4).
+- **Done** — Section 1 in full (device benchmarks, telemetry integrity checks,
+  onboarding / consent form), frame-rate throttling, and the A/B feedback
+  variants. Results in `study/results/SECTION1_RESULTS.md`.
 - **Decided** — the A/B protocol is a **counterbalanced crossover**. See
   Section 4.
-- **Needs a change** — the session payload in Section 3 must gain a `variant`
-  field, because of that decision.
+- **Proposed** — the session upload payload, in `study/API_SCHEMA.md`
+  (includes `variant` and the device metrics). Needs Beyza's sign-off.
 
 | Status | Meaning |
 |---|---|
@@ -28,12 +29,19 @@ note on what was built or what changed.
 
 *Difficulty: Easy–Medium*
 
-⬜ **OPEN** · Run continuous device stress tests (30 min / 60 min sessions) on
+✅ **DONE** · Run continuous device stress tests (30 min / 60 min sessions) on
 the Android device. — *Marthe*
 
-⬜ **OPEN** · Measure CPU usage, battery consumption (%/hr), and device
+✅ **DONE** · Measure CPU usage, battery consumption (%/hr), and device
 temperature profiles across different frame rates — this data feeds directly
 into the benchmarks needed for the paper. — *Marthe*
+
+> A 7-rate sweep (1–30 FPS) chose 3 FPS: 38% less CPU than unthrottled and
+> 2.5 °C cooler. Then five 30/60-min real-use runs (PiP open/closed, with and
+> without other apps). The app records battery, temperature, CPU and thermal
+> status every 15 s during every session (`device_metrics` table), so the same
+> data will arrive per participant. Full results, limitations and draft paper
+> text: `study/results/SECTION1_RESULTS.md`.
 
 ✅ **DONE** · Build automated telemetry integrity checks: confirm no missing
 timestamps and that the timestep sequence is continuous before trusting any
@@ -66,25 +74,45 @@ web form) linked to each participant's unique user ID. — *Beyza*
 
 *Difficulty: Medium*
 
-⬜ **OPEN** · Implement frame-rate throttling — sample at roughly 2–5 FPS
+✅ **DONE** · Implement frame-rate throttling — sample at roughly 2–5 FPS
 instead of 30 FPS to prevent thermal throttling and battery drain. — *Marthe*
+
+> 3 FPS while in picture-in-picture, 15 FPS when full-screen (3 FPS made the
+> skeleton look laggy). Head-position smoothing was made time-based so it
+> behaves the same at any rate.
 
 > Affects the ML Kit inference rate only. Database logging is already a fixed
 > 1 Hz timer and is unaffected. If that ever changes, the integrity checker's
 > expected interval must change with it.
 
-⚠️ **UPDATE** · Build the two feedback variants explicitly: **Version A —
+✅ **DONE** · Build the two feedback variants explicitly: **Version A —
 Dimming only** vs. **Version B — Baseline overlay**. Same underlying logging
 and detection logic in both. — *Marthe*
+
+> One APK. Three buttons on the home screen choose the feedback: **A —
+> Dimming** (sun icon), **B — Baseline** (person icon), **C — Both**. A dims
+> the screen and shows no baseline drawing; B shows the baseline drawing and
+> does not dim; C does both. Voice alerts, vibration and the coloured border
+> stay in all three. Each session stores its variant. Still to check on the
+> phone.
+>
+> ⚠️ The user now picks the mode, so the counterbalanced A/B order assigned by
+> the onboarding form isn't enforced by the app. Decide how the study uses
+> this (see Section 4).
 
 > Crossover means each participant uses **both** versions, so the app must
 > switch between them mid-study. One APK with a mode flag is preferred over
 > two APKs, which would force an uninstall between phases and cost dropouts.
 > Each uploaded session must carry which variant produced it.
 
-⬜ **OPEN** · Add local SQLite/queue caching so a network drop during a session
+✅ **DONE** · Add local SQLite/queue caching so a network drop during a session
 doesn't lose timestep data — queue and retry once connectivity returns.
 — *Marthe*
+
+> `upload_queue` table: each finished session is queued, then sent; failures
+> stay `pending` and retry after the next session, on app start, and when the
+> home screen opens. The integrity check runs before sending, as below;
+> failing sessions are marked `blocked` and kept on the phone.
 
 > Run the integrity check before the queue flushes, not after, so a corrupted
 > session is caught on the device.
@@ -99,6 +127,9 @@ doesn't lose timestep data — queue and retry once connectivity returns.
 endpoints (fields: `user_id`, `session_id`, `timestamp`, `score`, `zone`,
 `streak`, `battery`, `temperature`, `app_version`). — *Beyza*
 
+> Proposal written: `study/API_SCHEMA.md`. Open question for Beyza: the app
+> logs the zone every second but not the 0–100 score — is the score needed?
+>
 > **Add `variant` (A or B) to every session.** Under crossover the same
 > `user_id` produces sessions in both arms, so the participants table can no
 > longer say which feedback produced a given reading — and that comparison is
@@ -111,12 +142,22 @@ live. — *Beyza*
 > Registration can reuse the form's column list. Swapping the form from Sheets
 > to this API is a one-function change.
 
-⬜ **OPEN** · Wire the API client in the app: HTTPS POST, retry logic, and a
+✅ **DONE** · Wire the API client in the app: HTTPS POST, retry logic, and a
 device-identifier header on every request. — *Marthe*
 
-> Validate the participant ID where it is typed in —
-> `study/participant_id_validator.dart` is ready to paste. A mistyped ID
-> silently produces sessions that match no consent record.
+> Built against `study/API_SCHEMA.md`: POST `/api/sessions`, `X-Device-Id`
+> header (random per install), retry via the upload queue. Server address is
+> set at build time: `--dart-define=API_BASE_URL=https://...`. Not yet tested
+> against a real server.
+
+> ✅ Participant ID entry is built: the home screen shows the ID (tap to
+> edit, pre-filled with the saved one), Start Session asks for it if missing.
+> Rule: at least 6 letters/numbers, stored exactly as typed. Every session stores
+> `user_id`. The HTTPS client is built too (below).
+>
+> ⚠️ This replaced the `PG-XXXX-XXXX` checksum IDs from the onboarding form,
+> so the app no longer catches typos. Participants must type exactly the ID
+> recorded against their consent form, or sessions won't join to it.
 
 ⬜ **OPEN** · Set up the database (PostgreSQL/Supabase, or SQLite for an MVP)
 storing user IDs, demographics, and time-series posture states. — *Beyza*
@@ -223,7 +264,8 @@ estimation pipeline, frame-throttling logic, feedback-trigger mechanism.
 ⬜ **OPEN** · Compile system benchmarks (FPS vs. battery life/temperature) from
 the Section 1 stress tests, ready to drop into the paper. — *Beyza*
 
-> Blocked on Marthe's stress tests.
+> Unblocked. Tables, limitations and a draft paragraph are in
+> `study/results/SECTION1_RESULTS.md`.
 
 ⬜ **OPEN** · Draft Introduction, Related Work, and Methodology (User Study),
 plus the data-analysis pipeline — these can start well before data collection
@@ -317,12 +359,9 @@ analysis.
 
 ### Marthe
 
-1. Confirm the app can switch feedback modes without a reinstall; if not, the
-   phase switch needs a plan.
-2. Start the stress tests — Section 5's benchmarks and Section 2's throttling
-   decision both wait on them.
-3. When wiring the API client, validate the participant ID at entry using the
-   ready-made Dart validator.
+1. Test both variants on the phone (long-press the logo to switch).
+2. Once Beyza's server is up: build with its address and run the Section 6
+   end-to-end test.
 
 ---
 
@@ -350,3 +389,6 @@ terminal-verifiable work to Beyza.
 | `study/apps_script_backend.gs` | Google Sheets backend, order assignment |
 | `study/participant_id_validator.dart` | ID validator for the app |
 | `study/README.md` | Setup guide for the form and backend |
+| `study/API_SCHEMA.md` | Proposed session upload payload |
+| `study/results/SECTION1_RESULTS.md` | Device benchmarks, limitations, draft paper text |
+| `study/results/session_metrics/` | Raw data for the five real-use runs |

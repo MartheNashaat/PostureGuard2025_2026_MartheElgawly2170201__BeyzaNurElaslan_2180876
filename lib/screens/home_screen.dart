@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
+import '../models/feedback_variant.dart';
 import '../models/session_summary.dart';
 import '../services/database_service.dart';
 import '../services/calibration_service.dart';
+import '../services/variant_service.dart';
+import '../services/participant_service.dart';
+import '../services/upload_service.dart';
+import 'dart:async';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -14,6 +19,8 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
   SessionSummary? _lastSession;
   bool _hasCalibration = false;
   bool _loaded = false;
+  FeedbackVariant? _variant;
+  String? _participantId;
 
   @override
   void initState() {
@@ -24,8 +31,13 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
   Future<void> _loadData() async {
     final session = await DatabaseService.getLatestSession();
     final calibration = await CalibrationService.load();
+    final variant = await VariantService.get();
+    final participantId = await ParticipantService.get();
+    unawaited(UploadService.flush());
     if (mounted) {
       setState(() {
+        _variant = variant;
+        _participantId = participantId;
         _lastSession = session;
         _hasCalibration = calibration != null;
         _loaded = true;
@@ -53,6 +65,163 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
   }
 
   static RouteObserver<PageRoute>? _routeObserver;
+
+  Future<void> _selectVariant(FeedbackVariant v) async {
+    await VariantService.set(v);
+    if (mounted) setState(() => _variant = v);
+  }
+
+  /// Opens calibration → session, but only once a feedback mode is chosen,
+  /// so no session is recorded without one.
+  Future<void> _startSession() async {
+    if (_participantId == null) {
+      await _showParticipantIdDialog();
+      if (_participantId == null || !mounted) return;
+    }
+    if (_variant == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Choose a feedback mode first')),
+      );
+      return;
+    }
+    Navigator.pushNamed(context, '/calibration');
+  }
+
+  /// ID entry. Pre-filled with this phone's saved ID, so the user only types
+  /// one the first time or when they choose to change it.
+  Future<void> _showParticipantIdDialog() async {
+    final controller = TextEditingController(text: _participantId ?? '');
+    final saved = await showDialog<String>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          final text = controller.text;
+          final normalized = ParticipantService.normalize(text);
+          final badChars = ParticipantService.hasInvalidCharacters(text);
+          return AlertDialog(
+            title: const Text('Participant ID'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Enter your participant ID.'),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: controller,
+                  autofocus: true,
+                  maxLength: 20,
+                  autocorrect: false,
+                  enableSuggestions: false,
+                  decoration: InputDecoration(
+                    hintText: 'e.g. AB12CD',
+                    border: const OutlineInputBorder(),
+                    helperText: ParticipantService.rule,
+                    helperMaxLines: 2,
+                    errorText: badChars
+                        ? 'Letters and numbers only (no spaces or symbols).'
+                        : null,
+                    errorMaxLines: 2,
+                    suffixIcon: normalized != null
+                        ? const Icon(Icons.check_circle, color: Colors.teal)
+                        : null,
+                  ),
+                  onChanged: (_) => setDialogState(() {}),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: normalized == null
+                    ? null
+                    : () => Navigator.pop(context, normalized),
+                style: FilledButton.styleFrom(backgroundColor: Colors.teal),
+                child: const Text('Save'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+    controller.dispose();
+    if (saved == null) return;
+    final id = await ParticipantService.set(saved);
+    if (id != null && mounted) setState(() => _participantId = id);
+  }
+
+  Widget _buildParticipantRow() {
+    final id = _participantId;
+    return InkWell(
+      onTap: _showParticipantIdDialog,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(id == null ? Icons.badge_outlined : Icons.badge,
+                size: 18, color: id == null ? Colors.orange : Colors.teal),
+            const SizedBox(width: 8),
+            Text(
+              id ?? 'Enter participant ID',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                letterSpacing: id == null ? 0 : 1,
+                color: id == null ? Colors.orange : null,
+              ),
+            ),
+            const SizedBox(width: 6),
+            Icon(Icons.edit, size: 16, color: Colors.grey[500]),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildVariantSelector() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Feedback when posture is bad',
+            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey[600])),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            for (final v in FeedbackVariant.values) ...[
+              if (v != FeedbackVariant.values.first) const SizedBox(width: 8),
+              Expanded(child: _variantButton(v)),
+            ],
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _variantButton(FeedbackVariant v) {
+    final selected = v == _variant;
+    return OutlinedButton(
+      onPressed: () => _selectVariant(v),
+      style: OutlinedButton.styleFrom(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        backgroundColor: selected ? Colors.teal : null,
+        foregroundColor: selected ? Colors.white : Colors.teal,
+        side: const BorderSide(color: Colors.teal),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(v.icon, size: 28),
+          const SizedBox(height: 6),
+          Text(v.label, style: const TextStyle(fontSize: 14)),
+        ],
+      ),
+    );
+  }
 
   @override
   void dispose() {
@@ -90,6 +259,8 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
               'Monitor your posture in real time',
               style: TextStyle(fontSize: 16, color: Colors.grey[600]),
             ),
+            const SizedBox(height: 12),
+            if (_loaded) _buildParticipantRow(),
 
             const SizedBox(height: 32),
 
@@ -99,14 +270,15 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
               const SizedBox(height: 24),
             ],
 
+            _buildVariantSelector(),
+            const SizedBox(height: 16),
+
             // Start session button
             SizedBox(
               width: double.infinity,
               height: 56,
               child: ElevatedButton(
-                onPressed: () {
-                  Navigator.pushNamed(context, '/calibration');
-                },
+                onPressed: _startSession,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.teal,
                   foregroundColor: Colors.white,

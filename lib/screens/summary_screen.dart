@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../models/device_metrics_summary.dart';
 import '../models/session_summary.dart';
 import '../services/database_service.dart';
 import '../widgets/heatmap_chart.dart';
@@ -14,6 +15,7 @@ class SummaryScreen extends StatefulWidget {
 
 class _SummaryScreenState extends State<SummaryScreen> {
   List<int>? _statusPerSecond;
+  DeviceMetricsSummary? _metrics;
 
   @override
   void initState() {
@@ -24,10 +26,13 @@ class _SummaryScreenState extends State<SummaryScreen> {
   Future<void> _loadEvents() async {
     final events =
         await DatabaseService.getSessionEvents(widget.summary.sessionId);
+    final metrics =
+        await DatabaseService.getDeviceMetricsSummary(widget.summary.sessionId);
     if (mounted) {
       setState(() {
         _statusPerSecond =
             events.map((e) => e['status'] as int).toList();
+        _metrics = metrics.sampleCount > 0 ? metrics : null;
       });
     }
   }
@@ -171,6 +176,11 @@ class _SummaryScreenState extends State<SummaryScreen> {
                       : HeatmapChart(statusPerSecond: _statusPerSecond!),
             ),
 
+            if (_metrics != null) ...[
+              const SizedBox(height: 28),
+              _deviceUsageSection(_metrics!),
+            ],
+
             const SizedBox(height: 32),
 
             // Back to home button
@@ -229,6 +239,60 @@ class _SummaryScreenState extends State<SummaryScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _deviceUsageSection(DeviceMetricsSummary m) {
+    String pct(double? v) => v == null ? '—' : '${v.toStringAsFixed(1)}%';
+    final drain = m.batteryPercentPerHour;
+    final batteryText = m.startBatteryPercent == null
+        ? '—'
+        : '${m.startBatteryPercent!.round()}% → ${m.endBatteryPercent!.round()}%'
+            '${drain == null ? '' : '  (${drain.toStringAsFixed(1)}%/hr)'}';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Text(
+          'Device Usage',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          '${m.sampleCount} samples · ${m.pipPercent.round()}% in PiP'
+          '${m.backgroundPercent > 0 ? ' · ${m.backgroundPercent.round()}% PiP closed (angle only)' : ''}'
+          '${m.chargedDuringSession ? ' · charged during session' : ''}',
+          style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+        ),
+        const SizedBox(height: 12),
+        _statCard(
+          icon: Icons.battery_std,
+          label: 'Battery',
+          value: batteryText,
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _statCard(
+                icon: Icons.memory,
+                label: 'CPU avg / max',
+                value: '${pct(m.avgCpuPercent)} / ${pct(m.maxCpuPercent)}',
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _statCard(
+                icon: Icons.thermostat,
+                label: 'Max temp',
+                value: m.maxBatteryTempC == null
+                    ? '—'
+                    : '${m.maxBatteryTempC!.toStringAsFixed(1)}°C',
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 

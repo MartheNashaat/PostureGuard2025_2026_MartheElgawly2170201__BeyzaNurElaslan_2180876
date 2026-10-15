@@ -1,6 +1,7 @@
 import '../models/integrity_report.dart';
 import 'database_service.dart';
 import 'telemetry_integrity_service.dart';
+import 'upload_payload.dart';
 
 /// Outcome of asking the gate for a session's upload payload.
 ///
@@ -26,9 +27,9 @@ class UploadGateResult {
 /// This is the only integrity code that touches sqflite. The decision logic
 /// lives in [TelemetryIntegrityService], which is pure and unit-tested.
 ///
-/// There is no sync layer in PostureGuard yet. When one is added, it must
-/// obtain its request body from [buildUploadPayload] rather than querying
-/// `DatabaseService` directly — that is what keeps the check unskippable.
+/// The sync layer ([UploadService]) obtains its request body from
+/// [buildUploadPayload] rather than querying `DatabaseService` directly —
+/// that is what keeps the check unskippable.
 class TelemetryIntegrityGate {
   /// Validate one stored session, reading both its events and its summary.
   ///
@@ -81,6 +82,7 @@ class TelemetryIntegrityGate {
   /// caller's job; see the strategy notes in the accompanying documentation.
   static Future<UploadGateResult> buildUploadPayload(
     String sessionId, {
+    required DeviceInfo device,
     Duration expectedInterval =
         TelemetryIntegrityService.defaultExpectedInterval,
     double gapTolerance = TelemetryIntegrityService.defaultGapTolerance,
@@ -96,21 +98,21 @@ class TelemetryIntegrityGate {
     }
 
     final summary = await DatabaseService.getSession(sessionId);
+    // No summary means the session never ended properly; nothing to send.
+    if (summary == null) return UploadGateResult._(report, null);
     final events =
         await DatabaseService.getSessionEventsInWriteOrder(sessionId);
+    final metrics = await DatabaseService.getSessionDeviceMetrics(sessionId);
 
-    return UploadGateResult._(report, {
-      'session_id': sessionId,
-      'summary': summary?.toMap(),
-      'events': events
-          .map((e) => {
-                'timestamp': e['timestamp'],
-                'status': e['status'],
-              })
-          .toList(),
-      // Ship the verdict alongside the data so the server can see which
-      // client-side rules the payload was accepted under.
-      'integrity': report.toMap(),
-    });
+    return UploadGateResult._(
+      report,
+      buildSessionPayload(
+        summary: summary,
+        events: events,
+        metricsRows: metrics,
+        integrity: report,
+        device: device,
+      ),
+    );
   }
 }

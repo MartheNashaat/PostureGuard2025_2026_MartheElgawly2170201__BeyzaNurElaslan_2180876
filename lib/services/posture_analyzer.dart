@@ -1,4 +1,5 @@
 // lib/services/posture_analyzer.dart
+import 'dart:math' show exp;
 import '../models/calibration_data.dart';
 import '../models/posture_status.dart';
 import '../services/detection_service.dart';
@@ -92,11 +93,15 @@ class PostureAnalysisResult {
 class PostureAnalyzer {
   final CalibrationData calibration;
 
-  // EMA smoothing on camera NTS.
-  // 0.25 (up from 0.15): faster response so the NTS soft zone suppresses
-  // shoulder checks sooner when the phone starts moving up/down.
-  static const double _ntsAlpha = 0.25;
+  // EMA smoothing on camera NTS, defined by a time constant rather than a
+  // per-frame alpha so it responds the same at any detection frame rate.
+  // 0.186 s reproduces the previously tuned alpha of 0.25 at the ~19 FPS the
+  // unthrottled pipeline actually achieved; at the 3 FPS production rate it
+  // works out to alpha ≈ 0.83.
+  static const double _ntsTimeConstantSec = 0.186;
+  static const double _ntsMaxGapSec = 2.0;
   double _smoothNTS = double.nan;
+  DateTime? _lastNtsTime;
 
   // Camera NTS hysteresis — head position relative to shoulders.
   bool _headRaiseActive = false;
@@ -139,10 +144,17 @@ class PostureAnalyzer {
     final rawNTS      = (currentShoulderMidY  - landmarks.noseY)  / safeWidth;
     final baselineNTS = (baselineShoulderMidY - calibration.noseY) / safeBaselineWidth;
 
-    if (_smoothNTS.isNaN) {
+    final now = DateTime.now();
+    final dtSec = _lastNtsTime == null
+        ? double.infinity
+        : now.difference(_lastNtsTime!).inMicroseconds / 1e6;
+    _lastNtsTime = now;
+    // After a long gap (pose lost, app paused) the old value is stale: restart.
+    if (_smoothNTS.isNaN || dtSec > _ntsMaxGapSec) {
       _smoothNTS = rawNTS;
     } else {
-      _smoothNTS = _ntsAlpha * rawNTS + (1 - _ntsAlpha) * _smoothNTS;
+      final alpha = 1 - exp(-dtSec / _ntsTimeConstantSec);
+      _smoothNTS = alpha * rawNTS + (1 - alpha) * _smoothNTS;
     }
 
     final ratioThreshold = calibration.headDropThreshold / safeBaselineWidth;
