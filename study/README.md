@@ -6,25 +6,27 @@ linked to each participant's unique user ID."*
 | File | What it is |
 |---|---|
 | `participant_onboarding.html` | The form. Self-contained — no framework, no CDN, no build step. Open it in any browser. |
-| `apps_script_backend.gs` | Google Apps Script that receives submissions, assigns the A/B variant, and writes to a Sheet. |
-| `participant_id_validator.dart` | Paste-ready ID validator for the app, so a mistyped ID is rejected at entry. Runs its own self-test. |
+| `apps_script_backend.gs` | Google Apps Script that receives submissions, checks the participant ID is free, assigns the A/B order, and writes to a Sheet. |
+| `API_SCHEMA.md` | What the app uploads per session. Section 2 of the form describes the same fields to participants. |
 
 ---
 
 ## Why a web form and not a Google Form
 
-Google Forms cannot show a generated value on its confirmation screen — only
+Google Forms cannot show a computed value on its confirmation screen — only
 static text. Even with Apps Script, the `onFormSubmit` trigger fires *after*
-submission and cannot alter the confirmation page. That makes the requirement
-"generate a unique `user_id` and show it to the participant at the end"
-structurally impossible there. The remaining workarounds either collect an
-email address to send the ID (which weakens anonymity) or pre-generate a list
-of IDs to hand out by hand.
+submission and cannot alter the confirmation page. The participant needs to
+see their **assigned phase order** (A then B, or B then A) at the end, which
+is computed by the backend at submission time, so a Google Form can't do it.
 
-The HTML form also lets participants print or save their own copy of the
-signed consent, which ethics committees generally expect, and lays out the
-consent items as separately tickable statements rather than one blanket
-agreement.
+The HTML form also:
+
+- checks the participant ID against the app's rule *before* submitting, and
+  tells the participant immediately if the ID is already taken;
+- lets participants print or save their own copy of the signed consent, which
+  ethics committees generally expect;
+- lays out the consent items as separately tickable statements rather than
+  one blanket agreement.
 
 ---
 
@@ -103,9 +105,11 @@ Open `participant_onboarding.html` and set the URL near the top of the
 var ENDPOINT = "https://script.google.com/macros/s/AKfycb.../exec";
 ```
 
-Left empty, the form still works: it generates the ID and shows the
-participant's answers as JSON for manual copying. Useful for testing, and as a
-safety net — a network failure never costs a participant their responses.
+Left empty, the form still works: it shows the participant's ID, a locally
+alternated phase order, and their answers as JSON for manual copying. It
+cannot check whether the ID is already taken in this mode. Useful for
+testing, and as a safety net — a network failure never costs a participant
+their responses.
 
 The request is sent as `Content-Type: text/plain` on purpose. Apps Script web
 apps do not answer CORS preflight requests, so `application/json` would fail in
@@ -121,8 +125,11 @@ the browser. Apps Script reads the body from `e.postData.contents` either way.
 3. Submit twice more and confirm the variants balance (A, B, A, B…).
 4. Try to submit with a consent box unticked, and with age 17 — both must be
    refused with a message.
-5. Print the confirmation screen to PDF and check the participant ID is legible.
-6. **Delete the test rows before recruiting**, or they will skew the A/B
+5. Try to reuse an ID from step 1, also with different upper/lower case — it
+   must be refused as "already taken". Try an ID containing the test name —
+   also refused.
+6. Print the confirmation screen to PDF and check the participant ID is legible.
+7. **Delete the test rows before recruiting**, or they will skew the A/B
    allocation counts.
 
 ---
@@ -143,48 +150,39 @@ in-person or emailed use while recruitment is small.
 
 ## The participant ID
 
-Format: `PG-XXXX-XXXX` — a `PG-` prefix plus 8 characters.
+**Chosen by the participant**, at the end of the form. The rule is the app's
+(`lib/services/participant_service.dart`), so an ID the form accepts is always
+one the app accepts:
 
-- **Alphabet:** Crockford Base32 — the digits and letters minus `I`, `L`, `O`
-  and `U`, so `1`/`I` and `0`/`O` cannot be confused when read off paper.
-- **7 random characters** from `crypto.getRandomValues`, with rejection
-  sampling so every symbol is equally likely. That is 32⁷ ≈ 3.4 × 10¹⁰
-  possible IDs; at 100 participants the chance of *any* collision is about
-  1.5 × 10⁻⁷.
-- **The 8th character is a Luhn mod-32 checksum.** Verified empirically:
-  **100% of single-character typos** and **99.8% of adjacent transpositions**
-  are detected.
+- **At least 6 characters, letters and numbers only** — no spaces, dashes or
+  symbols. The form caps it at 20, the app's input limit.
+- **Case-sensitive, stored exactly as typed.** `Tiger42x` and `tiger42x` are
+  different IDs in the app. Only spaces at the ends are removed.
+- **Unique, ignoring case.** The backend refuses an ID that is already in the
+  Sheet in any capitalisation, so two participants can't end up with
+  look-alike IDs. The form then asks the participant to pick another one.
+- **Must not contain the participant's name or email.** The form refuses an ID
+  that contains any 3+ letter part of the typed name or email address. This
+  matters: the ID is the only thing on the research data that points back to
+  a person, and "pseudonymised" stops being true if the ID is `Ayse1995`.
+- Stored as plain text in the Sheet, so an all-digit ID like `001234` keeps
+  its leading zeros.
 
-The checksum is the point. Participants type this ID into the app by hand. A
-mistyped ID does not fail loudly — it produces sessions tagged with an ID that
-matches no consent record, which is invisible during collection and useless at
-analysis. Validating at entry turns that silent data loss into an immediate
-"check your ID" message.
+### Typos are not caught
 
-### Wiring the check into the app
+The app checks the *format* of the ID, not that it matches a registration. A
+participant who registered `Tiger42x` and types `Tiger42X` into the app gets
+sessions that silently match no consent record — invisible during collection
+and useless at analysis.
 
-Copy `ParticipantId` from `participant_id_validator.dart` into
-`lib/services/participant_id.dart` and call it on the ID entry screen:
+Mitigations, in order of effort:
 
-```dart
-final id = ParticipantId.normalize(controller.text);
-if (id == null) {
-  setState(() => _error = 'That ID does not look right — please check it.');
-  return;
-}
-// `id` is now canonical: PG-XXXX-XXXX, ready to send as user_id.
-```
-
-`normalize` accepts what people actually type: any case, with or without the
-dashes and the `PG-` prefix, and it folds `I`/`L` to `1` and `O` to `0` per
-the Crockford convention.
-
-Self-test (24 assertions, including every possible single-character typo on
-five real IDs generated by the HTML form):
-
-```bash
-dart run study/participant_id_validator.dart
-```
+1. The confirmation screen tells participants case matters and offers copy
+   and print.
+2. At the phase boundary, compare the `user_id`s arriving from the app against
+   the Sheet and contact anyone whose sessions don't match.
+3. Once the Section 3 server exists, it can refuse sessions whose `user_id` is
+   not registered, and the app can show that error.
 
 ---
 
@@ -196,6 +194,10 @@ settles it.
 Section 2 of the plan defines two arms — Version A (dimming only) and Version B
 (baseline overlay) — with identical detection and logging. Every participant
 uses **both**, one after the other.
+
+The app also has a **Version C (both at once)**. It is not one of the study's
+two arms and the form never assigns it; see the open question under *What the
+app does* below.
 
 ### Why crossover and not between-subjects
 
@@ -239,41 +241,29 @@ starting order.
 Run `groupCounts()` from the Apps Script editor during recruitment to see the
 current split.
 
-### Required change to the backend schema
+### The `variant` field
 
-The payload schema in the plan's Section 3 is:
+The same `user_id` produces sessions under both arms, so every uploaded
+session carries `variant` (`A`, `B` or `C`) — see `API_SCHEMA.md`. Without it
+the participants table could not tell you which feedback produced a given
+reading, and that comparison is the entire study.
 
-```
-user_id, session_id, timestamp, score, zone, streak, battery, temperature, app_version
-```
+The participants sheet separately records `sequence` (`AB` or `BA`),
+`phase1_variant` and `phase2_variant`. Comparing those with the `variant` on
+each uploaded session is how you check a participant actually used the
+version they were assigned in each phase.
 
-Crossover makes a **`variant` field on every session mandatory**. The same
-`user_id` now produces sessions under both arms, so the participants table can
-no longer tell you which feedback mechanism produced a given reading — and that
-comparison is the entire study.
+### What the app does
 
-```
-user_id, session_id, timestamp, score, zone, streak, battery, temperature, app_version, variant
-```
+One APK. Three buttons on the home screen choose the feedback — **A —
+Dimming**, **B — Baseline**, **C — Both** — and the choice is remembered
+between sessions. No session can start until one is chosen.
 
-`variant` holds `A` or `B` per session. The participants sheet separately
-records `sequence` (`AB` or `BA`), `phase1_variant` and `phase2_variant`, which
-is what lets you verify that a participant's uploaded sessions actually match
-the order they were assigned.
-
-### What the app needs
-
-The app must be able to run either feedback mode, and switch between them
-between phases. Two options:
-
-- **One APK, a mode flag.** The app asks the server which variant applies, or
-  reads a setting the researcher flips. Preferred: no reinstall, no risk of a
-  participant running the wrong build.
-- **Two APKs.** Simpler to build, but participants must uninstall and reinstall
-  between phases, which costs dropouts.
-
-Detection and logging are already identical across both variants, so this is a
-feedback-layer switch rather than a second implementation.
+**Open question:** the participant picks the button, so the app does not
+enforce the order the form assigned. As things stand, the form tells them
+which version to select for phase 1, and the researcher reminds them to switch
+at the phase boundary. Decide before recruiting whether that is enough, or
+whether the app should hide C and/or lock the variant for study participants.
 
 ---
 
@@ -305,11 +295,13 @@ function in the HTML needs to change — `send()`. Point `ENDPOINT` at your own
 route and keep the response contract:
 
 ```json
-{ "ok": true, "variant": "A" }
+{ "ok": true, "sequence": "AB" }
+{ "ok": false, "error": "duplicate user_id" }
 ```
 
-Everything else — ID generation, validation, the confirmation screen, the
-offline fallback — is independent of where the data goes.
+Everything else — validation, the confirmation screen, the offline
+fallback — is independent of where the data goes. Keep the server-side checks
+the Apps Script does: the ID rule, and uniqueness ignoring case.
 
 The `COLUMNS` array in `apps_script_backend.gs` doubles as the column list for
 the `participants` table when you write the schema.

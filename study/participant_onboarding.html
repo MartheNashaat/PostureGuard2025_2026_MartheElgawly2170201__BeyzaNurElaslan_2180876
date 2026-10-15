@@ -276,7 +276,7 @@
     <ul>
       <li><b>Version A — screen dimming.</b> Your screen gradually darkens when your
           posture slips, and brightens again when you correct it.</li>
-      <li><b>Version B — posture guide.</b> A faint outline of your own upright
+      <li><b>Version B — baseline guide.</b> A faint outline of your own upright
           posture appears on screen as a reference to match.</li>
     </ul>
     <p><b>You will use both versions</b>, one after the other, in an order we assign
@@ -287,13 +287,20 @@
     <p><b>What taking part involves.</b></p>
     <ul>
       <li>Install the PostureGuard app on your own Android phone
-          (Android 5.0 or newer, front camera required).</li>
-      <li>Enter the participant ID shown to you at the end of this form.</li>
+          (Android 8.0 or newer, front camera required).</li>
+      <li>Allow the permissions the app asks for: camera, notifications, display over
+          other apps (for the small floating window and the posture guide), and modify
+          system settings (to dim the screen).</li>
+      <li>Enter the participant ID you choose at the end of this form.</li>
       <li>Do a one-time calibration: sit in a comfortable, upright posture for
           about 5 seconds while the app records your personal baseline.</li>
-      <li><b>Phase 1:</b> use the app with the first version during your normal phone
-          use for <span class="todo">[PHASE LENGTH]</span>, with sessions
+      <li><b>Phase 1:</b> select your first version on the app's home screen, then use
+          the app during your normal phone use for <span class="todo">[PHASE LENGTH]</span>, with sessions
           of roughly <span class="todo">[SESSION DURATION]</span>.</li>
+      <li>During a session the app shrinks to a <b>small floating window</b> while you
+          use other apps — this is when feedback appears. If you close that window,
+          the app keeps checking only your phone's tilt with the motion sensor, and
+          the camera turns off.</li>
       <li><b>A short break</b> of <span class="todo">[WASHOUT PERIOD]</span>
           with no app use at all.</li>
       <li><b>Phase 2:</b> the same again with the second version. We will tell you when
@@ -305,8 +312,10 @@
     by us, not chosen — this is deliberate, and it keeps the comparison fair.</p>
 
     <p><b>Possible risks and discomforts.</b> The app dims your screen or draws an
-    overlay when it detects poor posture, which some people find distracting. Running
-    the camera continuously uses battery and can make the phone warm. There is no
+    overlay when it detects poor posture, which some people find distracting. The app
+    keeps your screen on during a session, and running the camera uses battery and
+    can make the phone warm — in our tests the battery dropped by roughly 14–21% per
+    hour of use. There is no
     physical risk beyond ordinary phone use. You are free to stop a session, uninstall
     the app, or leave the study at any point.</p>
 
@@ -344,28 +353,40 @@
     <div class="scroll-x">
       <table class="fields">
         <tr><th><code>user_id</code></th>
-            <td>The random participant ID generated at the end of this form.</td></tr>
+            <td>The participant ID you choose at the end of this form.</td></tr>
         <tr><th><code>session_id</code></th>
-            <td>A random identifier for one monitoring session.</td></tr>
-        <tr><th><code>timestamp</code></th>
-            <td>The time of each posture reading (roughly one per second).</td></tr>
-        <tr><th><code>score</code></th>
-            <td>A posture quality number from 0 to 100.</td></tr>
-        <tr><th><code>zone</code></th>
-            <td>Which quality band that score falls into (good / warning / bad).</td></tr>
-        <tr><th><code>streak</code></th>
-            <td>How many seconds of good posture you held in a row.</td></tr>
-        <tr><th><code>battery</code></th>
-            <td>Your phone's battery level, to measure the app's power cost.</td></tr>
-        <tr><th><code>temperature</code></th>
-            <td>Your phone's temperature, to check the app does not overheat it.</td></tr>
-        <tr><th><code>app_version</code></th>
-            <td>Which build of the app produced the data.</td></tr>
+            <td>An identifier for one monitoring session (its start time).</td></tr>
+        <tr><th><code>variant</code></th>
+            <td>Which feedback version was active during the session.</td></tr>
+        <tr><th>Posture readings</th>
+            <td>Once per second: the time and the posture zone (good / warning / bad).
+            Your 0–100 score is shown live in the app but not stored or sent.</td></tr>
+        <tr><th>Session summary</th>
+            <td>Start and end time, duration, percentage of time in good posture,
+            longest good-posture streak, and the time of your worst moment.</td></tr>
+        <tr><th>Phone performance</th>
+            <td>Every 15 seconds: battery level, battery temperature, whether the phone
+            is charging, overheating level, the app's own processor use, whether the
+            screen is on or battery saver is active, and whether the app is open,
+            minimised to a small window, or closed. Used to measure the app's cost
+            to your phone.</td></tr>
+        <tr><th>Phone details</th>
+            <td>Manufacturer, model, Android version, number of processor cores, and
+            the app version.</td></tr>
+        <tr><th>Install ID</th>
+            <td>A random code created when the app is installed. It identifies the
+            installation, not you or your phone's hardware.</td></tr>
+        <tr><th>Quality check</th>
+            <td>The result of an automatic check that no readings are missing.</td></tr>
       </table>
     </div>
-    <p>Each reading also records which of the two versions produced it, so that the
-    two can be compared. Your answers on this form, your assigned order, and your phone
-    model are stored alongside these, linked by <code>user_id</code>.</p>
+    <p>Your answers on this form and your assigned order are stored alongside these,
+    linked by <code>user_id</code>.</p>
+
+    <h3>Kept only on your phone</h3>
+    <p>Your session history and the measurements above are also stored inside the app
+    on your phone, so you can review past sessions. They are removed when you uninstall
+    the app.</p>
 
     <h3>Never collected</h3>
     <ul>
@@ -379,8 +400,8 @@
 
     <h3>How your identity is protected</h3>
     <p>Your data is <b>pseudonymised</b>, not fully anonymous, and we want to be precise
-    about the difference. Everything sent from the app carries only your random
-    participant ID. However, we keep a separate, access-restricted list linking your
+    about the difference. Everything sent from the app carries only the participant
+    ID you choose — which is why it must not contain your name. However, we keep a separate, access-restricted list linking your
     name to that ID. We keep it for one reason: so that if you later ask us to delete
     your data, we can actually find it. Nobody outside the research team can see this
     list, and it is stored separately from the study data.</p>
@@ -438,9 +459,9 @@
 
       <label class="consent-item">
         <input type="checkbox" name="consent_pseudonymous" data-required-consent>
-        <span>I understand my data is <b>pseudonymised</b>: it is labelled with a random
-        ID, and the research team keeps a restricted list linking that ID to my name so
-        that deletion requests can be honoured.</span>
+        <span>I understand my data is <b>pseudonymised</b>: it is labelled with a
+        participant ID I choose, and the research team keeps a restricted list linking
+        that ID to my name so that deletion requests can be honoured.</span>
       </label>
 
       <label class="consent-item">
@@ -683,11 +704,21 @@
   <div class="errbox" id="errors" role="alert" aria-live="assertive"></div>
 
   <section class="card noprint">
-    <h2><span class="num">6</span>Submit</h2>
-    <p>When you submit, a participant ID will be generated and shown on the next screen.
-    <b>You will need it to use the app</b>, so please write it down, or print the page.</p>
+    <h2><span class="num">6</span>Choose your participant ID</h2>
+    <div class="field" id="f-user_id">
+      <label class="q" for="user_id">Participant ID <span class="req">*</span></label>
+      <p class="hint">At least 6 characters, letters and numbers only — no spaces or
+      symbols. Upper and lower case count as different, so <code>Tiger42x</code> and
+      <code>tiger42x</code> are not the same ID. <b>Do not use your name, email or
+      anything else that identifies you</b> — a made-up word plus some numbers works
+      well.</p>
+      <input type="text" id="user_id" name="user_id" maxlength="20"
+             autocomplete="off" autocapitalize="off" spellcheck="false">
+    </div>
+    <p><b>You will type this ID into the app</b>, so please write it down, or print the
+    next page.</p>
     <button type="submit" class="primary" id="submitBtn">
-      Give consent and get my participant ID
+      Give consent and register
     </button>
   </section>
 </form>
@@ -711,19 +742,19 @@
 
     <h3>What to do next</h3>
     <ol>
-      <li>Write this ID down, or print this page — it is shown only once, and we cannot
-          recover it for you later.</li>
+      <li>Write this ID down, or print this page.</li>
       <li>Install PostureGuard on your Android phone using the link we send you.</li>
-      <li>Open the app and enter your participant ID exactly as shown, including the
-          dashes.</li>
+      <li>Open the app and enter your participant ID exactly as shown — upper and
+          lower case matter.</li>
       <li>Complete the 5-second calibration while sitting comfortably upright.</li>
-      <li><b>Phase 1:</b> use the app with your first version for
+      <li><b>Phase 1:</b> on the app's home screen, select your first version (shown
+          above), then use the app for
           <span class="todo">[PHASE LENGTH]</span>.</li>
       <li><b>Break:</b> stop using the app for
           <span class="todo">[WASHOUT PERIOD]</span>. This matters — please do not skip
           it.</li>
-      <li><b>Phase 2:</b> we will contact you with instructions to switch to your
-          second version, then carry on as before.</li>
+      <li><b>Phase 2:</b> we will remind you to select your second version on the
+          home screen, then carry on as before.</li>
     </ol>
 
     <div class="callout">
@@ -743,7 +774,7 @@
 
   <section class="card noprint" id="fallback">
     <h2><span class="num">!</span>Could not reach the server</h2>
-    <p>Your ID above is still valid, but your answers were <b>not</b> saved
+    <p>Your ID above is still yours to use, but your answers were <b>not</b> saved
     automatically. Please copy the text below and send it to
     <span class="todo">[CONTACT EMAIL]</span>, or show this screen to the researcher.</p>
     <button type="button" class="ghost" id="copyJsonBtn">Copy my responses</button>
@@ -769,53 +800,15 @@
   var ENDPOINT = "";
 
   // ═══════════════════════════════════════════════════════════
-  //  Participant ID — Crockford Base32 with a Luhn mod-32 check
-  //  character, formatted PG-XXXX-XXXX.
+  //  Participant ID — chosen by the participant.
   //
-  //  Participants type this into the app by hand, so the format is
-  //  chosen for typing, not for machine elegance:
-  //    · I, L, O and U are absent, so there is no 1/I or 0/O confusion
-  //    · 7 random characters => 32^7 ≈ 3.4e10 possible IDs.
-  //      At 100 participants the chance of any collision is ~1.5e-7.
-  //    · the 8th character is a checksum, so the app can reject a
-  //      mistyped ID at entry instead of silently recording orphan
-  //      sessions that can never be joined to this form.
+  //  Same rule as the app (lib/services/participant_service.dart):
+  //  at least 6 letters/numbers, kept exactly as typed, case-sensitive.
+  //  20 is the app's input field limit. The backend refuses an ID that
+  //  is already taken, ignoring case.
   // ═══════════════════════════════════════════════════════════
 
-  var ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"; // Crockford, 32 symbols
-  var RANDOM_LEN = 7;
-
-  function randomChars(n) {
-    var out = "";
-    var buf = new Uint8Array(n * 2);
-    (window.crypto || window.msCrypto).getRandomValues(buf);
-    var i = 0;
-    // Rejection sampling: 256 is not a multiple of 32's byte range, so
-    // discard bytes >= 248 to keep every symbol equally likely.
-    for (var b = 0; b < buf.length && i < n; b++) {
-      if (buf[b] < 248) { out += ALPHABET[buf[b] % 32]; i++; }
-    }
-    while (out.length < n) out += ALPHABET[Math.floor(Math.random() * 32)];
-    return out;
-  }
-
-  // Luhn mod N: catches every single-character error and most swaps.
-  function luhnCheckChar(payload) {
-    var n = ALPHABET.length, factor = 2, sum = 0, addend;
-    for (var i = payload.length - 1; i >= 0; i--) {
-      addend = factor * ALPHABET.indexOf(payload[i]);
-      factor = (factor === 2) ? 1 : 2;
-      addend = Math.floor(addend / n) + (addend % n);
-      sum += addend;
-    }
-    return ALPHABET[(n - (sum % n)) % n];
-  }
-
-  function generateParticipantId() {
-    var payload = randomChars(RANDOM_LEN);
-    var body = payload + luhnCheckChar(payload); // 8 characters
-    return "PG-" + body.slice(0, 4) + "-" + body.slice(4);
-  }
+  var USER_ID_PATTERN = /^[A-Za-z0-9]{6,20}$/;
 
   // ═══════════════════════════════════════════════════════════
   //  Counterbalanced crossover assignment
@@ -830,8 +823,8 @@
   // ═══════════════════════════════════════════════════════════
 
   var VARIANT_LABEL = {
-    A: "Version A — screen dimming",
-    B: "Version B — posture guide"
+    A: "Version A — Dimming",
+    B: "Version B — Baseline"
   };
 
   function localFallbackSequence() {
@@ -842,7 +835,7 @@
       localStorage.setItem("pg_assign_counter", String(n + 1));
       return (n % 2 === 0) ? "AB" : "BA";
     } catch (e) {
-      return randomChars(1).charCodeAt(0) % 2 === 0 ? "AB" : "BA";
+      return Math.random() < 0.5 ? "AB" : "BA";
     }
   }
 
@@ -943,6 +936,17 @@
       fail("f-email", "That email address does not look valid.");
     }
 
+    var uid = form.elements.user_id.value.trim();
+    if (!uid) {
+      fail("f-user_id", "Please choose a participant ID.");
+    } else if (!USER_ID_PATTERN.test(uid)) {
+      fail("f-user_id", "Your participant ID must be 6–20 letters and numbers, " +
+           "with no spaces or symbols.");
+    } else if (containsName(uid)) {
+      fail("f-user_id", "Please choose a participant ID that does not contain " +
+           "your name or email.");
+    }
+
     // The signature must match the stated name — a basic integrity check
     // on the consent record itself.
     var nm = form.elements.full_name.value.trim().toLowerCase();
@@ -962,15 +966,27 @@
     return true;
   }
 
+  // The ID is the only thing on the research data that points back to a
+  // person, so refuse one built from their name or email.
+  function containsName(uid) {
+    var id = uid.toLowerCase();
+    var parts = (form.elements.full_name.value + " " +
+                 form.elements.email.value.split("@")[0])
+      .toLowerCase().split(/[^a-z0-9]+/);
+    for (var i = 0; i < parts.length; i++) {
+      if (parts[i].length >= 3 && id.indexOf(parts[i]) !== -1) return true;
+    }
+    return false;
+  }
+
   // ═══════════════════════════════════════════════════════════
   //  Collect responses
   // ═══════════════════════════════════════════════════════════
 
-  function collect(userId) {
+  function collect() {
     var record = {
-      user_id: userId,
       submitted_at: new Date().toISOString(),
-      form_version: "1.0"
+      form_version: "1.1"
     };
 
     var data = new FormData(form);
@@ -978,7 +994,7 @@
       if (key === "pain_area") {
         record.pain_area = (record.pain_area ? record.pain_area + "; " : "") + value;
       } else {
-        record[key] = value;
+        record[key] = (key === "user_id") ? String(value).trim() : value;
       }
     });
     if (!record.pain_area) record.pain_area = "";
@@ -1009,10 +1025,20 @@
     submitBtn.disabled = true;
     submitBtn.textContent = "Registering…";
 
-    var userId = generateParticipantId();
-    var record = collect(userId);
+    var record = collect();
 
     send(record).then(function (result) {
+      if (result.error === "duplicate user_id") {
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Give consent and register";
+        var field = document.getElementById("f-user_id");
+        field.classList.add("invalid");
+        errBox.innerHTML = "<b>That participant ID is already taken.</b> " +
+                           "Please choose a different one.";
+        errBox.style.display = "block";
+        field.scrollIntoView({ behavior: "smooth", block: "center" });
+        return;
+      }
       finish(record, result.sequence || localFallbackSequence(), result.ok);
     });
   });
@@ -1030,7 +1056,8 @@
     })
       .then(function (r) { return r.json(); })
       .then(function (j) {
-        return { ok: j && j.ok === true, sequence: j && j.sequence };
+        return { ok: j && j.ok === true, sequence: j && j.sequence,
+                 error: j && j.error };
       })
       .catch(function () { return { ok: false, sequence: null }; });
   }

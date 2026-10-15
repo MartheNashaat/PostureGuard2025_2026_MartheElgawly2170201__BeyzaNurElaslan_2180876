@@ -7,12 +7,12 @@ class SessionSummary {
   final int longestStreakSeconds;
   final DateTime? worstMomentTimestamp;
 
-  /// Feedback variant code (`A` or `B`). Null for sessions recorded before
+  /// Feedback variant code (`A`, `B` or `C`). Null for sessions recorded before
   /// variants existed.
   final String? variant;
 
-  /// Participant ID (`PG-XXXX-XXXX`). Null for sessions recorded before IDs
-  /// were entered in the app.
+  /// Participant ID chosen by the user (see `ParticipantService`). Null for
+  /// sessions recorded before IDs were entered in the app.
   final String? userId;
 
   const SessionSummary({

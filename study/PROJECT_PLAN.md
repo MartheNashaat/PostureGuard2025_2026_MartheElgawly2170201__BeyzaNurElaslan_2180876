@@ -1,7 +1,8 @@
 # PostureGuard — Full Project Plan (annotated)
 
 Priority ordering across pre-study validation, app engineering, backend, study
-design, and the paper. Annotated 15 September 2026.
+design, and the paper. Annotated 15 September 2026; brought in line with the
+code on `main` on 15 October 2026.
 
 The original plan text is preserved; each task carries a status and a short
 note on what was built or what changed.
@@ -15,6 +16,11 @@ note on what was built or what changed.
   Section 4.
 - **Proposed** — the session upload payload, in `study/API_SCHEMA.md`
   (includes `variant` and the device metrics). Needs Beyza's sign-off.
+- **Participant IDs** — chosen by the participant (6+ letters/numbers,
+  case-sensitive), in both the app and the onboarding form. The earlier
+  `PG-XXXX-XXXX` generated IDs are gone.
+- **Open** — whether the app should enforce the assigned A/B order, and what
+  role Version C (both) plays in the study. See Section 2.
 
 | Status | Meaning |
 |---|---|
@@ -61,12 +67,14 @@ uploaded session. — *Beyza*
 ✅ **DONE** · Prepare user onboarding / consent forms (Google Form or a simple
 web form) linked to each participant's unique user ID. — *Beyza*
 
-> Self-contained HTML form — a Google Form cannot display a generated ID on
-> its confirmation screen, which the requirement needs. Covers study
-> description, granular informed consent, the Section 4 demographics, and
-> issues a `PG-XXXX-XXXX` ID whose checksum catches 100% of single-character
-> typos. Submissions go to Google Sheets via Apps Script until the real
-> backend exists. Files in `study/`.
+> Self-contained HTML form — a Google Form cannot display the assigned phase
+> order on its confirmation screen, which the crossover needs. Covers study
+> description, granular informed consent, the Section 4 demographics, and the
+> participant's **own choice of ID**, checked against the app's rule (6+
+> letters/numbers, case-sensitive). The backend refuses an ID that is already
+> taken (ignoring case), and the form refuses one containing the participant's
+> name or email. Submissions go to Google Sheets via Apps Script until the
+> real backend exists. Files in `study/`.
 
 ---
 
@@ -96,9 +104,12 @@ and detection logic in both. — *Marthe*
 > stay in all three. Each session stores its variant. Still to check on the
 > phone.
 >
-> ⚠️ The user now picks the mode, so the counterbalanced A/B order assigned by
-> the onboarding form isn't enforced by the app. Decide how the study uses
-> this (see Section 4).
+> ⚠️ **Open decision.** The user picks the mode, so the counterbalanced A/B
+> order assigned by the onboarding form isn't enforced by the app — the form
+> tells participants which button to select, and the researcher reminds them
+> at the phase switch. Also decide what Version C is for: the form and consent
+> text only describe A and B. Options: hide C in study builds, or keep it for
+> testing and benchmarks only. Decide before recruiting.
 
 > Crossover means each participant uses **both** versions, so the app must
 > switch between them mid-study. One APK with a mode flag is preferred over
@@ -130,10 +141,10 @@ endpoints (fields: `user_id`, `session_id`, `timestamp`, `score`, `zone`,
 > Proposal written: `study/API_SCHEMA.md`. Open question for Beyza: the app
 > logs the zone every second but not the 0–100 score — is the score needed?
 >
-> **Add `variant` (A or B) to every session.** Under crossover the same
-> `user_id` produces sessions in both arms, so the participants table can no
-> longer say which feedback produced a given reading — and that comparison is
-> the whole study.
+> `variant` (`A`, `B` or `C`) is in the proposal and the app already sends
+> it. Under crossover the same `user_id` produces sessions in both arms, so
+> the participants table can no longer say which feedback produced a given
+> reading — and that comparison is the whole study.
 
 ⬜ **OPEN** · Build the Web API (e.g. FastAPI or Flask) with endpoints for user
 registration and batch timestep sync — batched at session end, not streamed
@@ -155,9 +166,12 @@ device-identifier header on every request. — *Marthe*
 > Rule: at least 6 letters/numbers, stored exactly as typed. Every session stores
 > `user_id`. The HTTPS client is built too (below).
 >
-> ⚠️ This replaced the `PG-XXXX-XXXX` checksum IDs from the onboarding form,
-> so the app no longer catches typos. Participants must type exactly the ID
-> recorded against their consent form, or sessions won't join to it.
+> The onboarding form now asks the participant to choose their ID with the
+> same rule, so the two always agree on format. What neither can catch is a
+> typo or wrong capitalisation when the ID is typed into the app: those
+> sessions silently match no consent record. Mitigations are in
+> `study/README.md` — the strongest is for the server to refuse sessions
+> whose `user_id` isn't registered.
 
 ⬜ **OPEN** · Set up the database (PostgreSQL/Supabase, or SQLite for an MVP)
 storing user IDs, demographics, and time-series posture states. — *Beyza*
@@ -226,8 +240,9 @@ interacts with the outcome. HCI reviewers expect that check.
 
 **What this forces elsewhere.**
 
-- The session payload needs a `variant` field — Section 3.
-- The app must switch feedback modes between phases — Section 2.
+- The session payload needs a `variant` field — Section 3. *(Done.)*
+- The app must switch feedback modes between phases — Section 2. *(Done:
+  home-screen buttons; enforcement still open.)*
 - Participation is now two phases plus a break, so recruitment messaging must
   state the full time commitment.
 
@@ -296,18 +311,19 @@ database and API logs on the server side. — *Together*
 1. **Onboarding.** Opens the consent form, reads what the study is and what
    the app records, ticks each consent statement individually, signs, and
    answers the demographic questions.
-2. **Gets an ID.** The form issues a `PG-XXXX-XXXX` participant ID and tells
-   them their phase order — for example *1st Version A (dimming), 2nd
-   Version B (posture guide)*. They copy it down or print the page, which
-   doubles as their own copy of the signed consent.
-3. **Setup.** Installs the app, types the ID in, and does the one-time
-   5-second calibration in a comfortable upright posture.
-4. **Phase 1.** Uses the app during normal phone use, with their first
-   feedback version, for the phase length.
+2. **Chooses an ID.** Picks their own participant ID (6+ letters/numbers, not
+   their name). The form registers it and shows their phase order — for
+   example *1st Version A — Dimming, 2nd Version B — Baseline*. They copy it
+   down or print the page, which doubles as their own copy of the signed
+   consent.
+3. **Setup.** Installs the app, types the ID in exactly as registered, and
+   does the one-time 5-second calibration in a comfortable upright posture.
+4. **Phase 1.** Selects their first version with the feedback buttons on the
+   home screen and uses the app during normal phone use for the phase length.
 5. **Washout.** Stops using the app entirely for the break period. This is not
    optional — it is what stops phase 1 from contaminating phase 2.
-6. **Phase 2.** Switches to the second feedback version and carries on as
-   before.
+6. **Phase 2.** Selects the second version on the home screen and carries on
+   as before.
 7. **Follow-up.** Optional short questionnaire, if they agreed to be contacted.
 
 At any point they can email quoting their ID to withdraw, with no reason
@@ -317,10 +333,10 @@ required and no consequence.
 
 | When | Who | What |
 |---|---|---|
-| Before recruiting | Beyza | Fill the form's 14 placeholders; get ethics approval; deploy the Apps Script backend; run three test submissions; delete the test rows |
-| Per participant, at signup | Beyza | Send the form link; the backend assigns the counterbalanced order automatically |
-| Per participant, after signup | Marthe | Send the APK or mode setting for their **phase 1** variant |
-| At the phase boundary | Both | Remind the participant to pause for the washout, then switch them to the phase 2 variant — same participant ID throughout |
+| Before recruiting | Beyza | Fill the form's 14 placeholders; get ethics approval; deploy the Apps Script backend; run the test submissions in `study/README.md`; delete the test rows |
+| Per participant, at signup | Beyza | Send the form link; the backend checks the ID is free and assigns the counterbalanced order automatically |
+| Per participant, after signup | Marthe | Send the APK and remind them which button to select for their **phase 1** variant |
+| At the phase boundary | Both | Remind the participant to pause for the washout, then to select their phase 2 variant — same participant ID throughout. Check their uploaded `user_id` and `variant` match the Sheet |
 | During recruitment | Beyza | Run `groupCounts()` occasionally to confirm the `AB`/`BA` split stays even |
 | As sessions arrive | — | Each upload is validated by the integrity gate on the device before it is sent |
 | At the end | Beyza | Export the Sheet to CSV, split identity columns from research columns, join sessions to demographics on `user_id` |
@@ -331,13 +347,15 @@ The onboarding form and the app never talk to each other. They produce two
 separate datasets:
 
 - **From the form** — consent record, demographics, device, assigned sequence.
-- **From the app** — per-second posture readings, scores, zones, streaks,
-  battery, temperature.
+- **From the app** — per-second posture zones, session summaries, and device
+  metrics every 15 s (battery, temperature, CPU, thermal status, app state);
+  full list in `study/API_SCHEMA.md`.
 
-`user_id` is the only thing joining them, which is why the ID carries a
-checksum: a participant mistyping it into the app would produce sessions that
-silently match no consent record, invisible during collection and useless at
-analysis.
+`user_id` is the only thing joining them. The app checks its format but not
+that it was registered, so a participant mistyping it into the app would
+produce sessions that silently match no consent record — invisible during
+collection and useless at analysis. Check the join at the phase boundary,
+not only at the end.
 
 ---
 
@@ -350,16 +368,19 @@ analysis.
    institutional was invented; every one is left blank on purpose.
 2. Send the consent text to the ethics committee for approval before
    recruiting anyone. It is a drafted text, not legal advice.
-3. Deploy the Apps Script web app, paste its URL into the form, and submit
-   three test entries to confirm the order assignment balances. Delete the
-   test rows afterwards.
-4. Add `variant` to the session schema before writing any endpoint.
+3. Deploy the Apps Script web app, paste its URL into the form, and run the
+   test submissions in `study/README.md` (order balancing, duplicate IDs).
+   Delete the test rows afterwards.
+4. Review and sign off `study/API_SCHEMA.md` before writing any endpoint —
+   including whether the per-second 0–100 score is needed.
 5. Decide phase length, washout length, and session duration — the form cannot
    be sent out until these are set.
+6. With Marthe: decide variant enforcement and the role of Version C.
 
 ### Marthe
 
-1. Test both variants on the phone (long-press the logo to switch).
+1. Test all three variants on the phone (feedback buttons on the home
+   screen).
 2. Once Beyza's server is up: build with its address and run the Section 6
    end-to-end test.
 
@@ -386,9 +407,10 @@ terminal-verifiable work to Beyza.
 | `lib/models/integrity_report.dart` | Result types |
 | `test/telemetry_integrity_service_test.dart` | 25 unit tests |
 | `study/participant_onboarding.html` | Onboarding + consent form |
-| `study/apps_script_backend.gs` | Google Sheets backend, order assignment |
-| `study/participant_id_validator.dart` | ID validator for the app |
+| `study/apps_script_backend.gs` | Google Sheets backend: ID check, order assignment |
+| `lib/services/participant_service.dart` | Participant ID rule and storage in the app |
+| `lib/services/upload_service.dart` | Upload queue and HTTPS client |
 | `study/README.md` | Setup guide for the form and backend |
-| `study/API_SCHEMA.md` | Proposed session upload payload |
+| `study/API_SCHEMA.md` | Session upload payload (proposal, built in the app) |
 | `study/results/SECTION1_RESULTS.md` | Device benchmarks, limitations, draft paper text |
 | `study/results/session_metrics/` | Raw data for the five real-use runs |

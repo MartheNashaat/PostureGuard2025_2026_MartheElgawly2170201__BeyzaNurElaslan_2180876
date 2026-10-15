@@ -1,10 +1,10 @@
 # Session upload — API payload schema
 
-What the app will send to the server at the end of each session. Written so
-the endpoints and database tables can be built against it before the app's
-upload client exists.
+What the app sends to the server at the end of each session. The endpoints
+and database tables should be built against it.
 
-**Status:** proposal — agree on it (or change it) before writing endpoints.
+**Status:** proposal, already implemented in the app — agree on it (or change
+it) before writing endpoints.
 
 ---
 
@@ -109,7 +109,7 @@ ignored). Any non-2xx response makes the app retry later.
 
 | Field | Type | Notes |
 |---|---|---|
-| `user_id` | string | Participant ID entered on the phone: 6+ letters/numbers, stored exactly as typed (case-sensitive). Set once per phone and kept until the user edits it. Groups sessions per participant. |
+| `user_id` | string | Participant ID entered on the phone: 6+ letters/numbers, stored exactly as typed (case-sensitive). Set once per phone and kept until the user edits it. Groups sessions per participant. The participant chooses it on the onboarding form under the same rule, so it joins to the `participants` sheet. `null` only for sessions recorded before ID entry existed. |
 | `session_id` | string | Unique **per device**, not globally (it is the start time in ms). Use `(user_id, session_id)` as the key. |
 | `variant` | `"A"` \| `"B"` \| `"C"` | **Required.** A = dimming only, B = baseline overlay only, C = both. Chosen by the user on the home screen. Under crossover this is the only way to tell which arm produced a session. |
 | `app_version` | string | Build name + number. |

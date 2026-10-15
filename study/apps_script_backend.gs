@@ -19,6 +19,13 @@
 var SHEET_NAME = 'participants';
 
 /**
+ * Participant ID rule — must match ParticipantService in the app
+ * (lib/services/participant_service.dart): at least 6 letters/numbers,
+ * kept exactly as typed. 20 is the app's input field limit.
+ */
+var USER_ID_PATTERN = /^[A-Za-z0-9]{6,20}$/;
+
+/**
  * Column order. The first three are produced here, not by the form.
  * Adding a question to the form means adding its `name` to this list —
  * nothing else needs to change.
@@ -91,15 +98,16 @@ function doPost(e) {
   try {
     var record = JSON.parse(e.postData.contents);
 
-    if (!record.user_id) {
-      return json({ ok: false, error: 'missing user_id' });
+    record.user_id = String(record.user_id || '').trim();
+    if (!USER_ID_PATTERN.test(record.user_id)) {
+      return json({ ok: false, error: 'invalid user_id' });
     }
 
     var sheet = getSheet();
 
     if (findRowByUserId(sheet, record.user_id) > 0) {
-      // Should never happen at this ID length, but a silent overwrite
-      // would be worse than a refusal.
+      // Participants choose their own ID, so this does happen. The form
+      // asks them to pick another one.
       return json({ ok: false, error: 'duplicate user_id' });
     }
 
@@ -161,12 +169,18 @@ function assignSequence(sheet) {
   return Math.random() < 0.5 ? 'AB' : 'BA';
 }
 
+/**
+ * Case-insensitive on purpose. The app treats `ab12cd` and `AB12CD` as
+ * different IDs, but two participants that close would be easy to mix up
+ * when joining sessions to consent records, so the form refuses the second.
+ */
 function findRowByUserId(sheet, userId) {
   var lastRow = sheet.getLastRow();
   if (lastRow < 2) return -1;
+  var wanted = userId.toLowerCase();
   var ids = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
   for (var i = 0; i < ids.length; i++) {
-    if (ids[i][0] === userId) return i + 2;
+    if (String(ids[i][0]).toLowerCase() === wanted) return i + 2;
   }
   return -1;
 }
@@ -182,6 +196,9 @@ function getSheet() {
     sheet.getRange(1, 1, 1, COLUMNS.length).setFontWeight('bold');
     sheet.setFrozenRows(1);
   }
+  // Plain text, so an all-digit ID like `001234` isn't turned into the
+  // number 1234 and stops matching the app's sessions.
+  sheet.getRange('A:A').setNumberFormat('@');
   return sheet;
 }
 

@@ -1,6 +1,6 @@
 # PostureGuard
 
-Real-time posture monitor for Android. Uses the front camera and accelerometer together to detect poor posture and alert you with screen-dimming feedback — no wearables, no subscriptions, no cloud.
+Real-time posture monitor for Android. Uses the front camera and accelerometer together to detect poor posture and alert you with screen-dimming or baseline-overlay feedback — no wearables, no subscriptions. Built for a research study comparing the two feedback types: see [`study/PROJECT_PLAN.md`](study/PROJECT_PLAN.md).
 
 ---
 
@@ -46,9 +46,21 @@ Every frame produces an overall score (0–100 %) averaged from seven per-metric
 | < 20 % | Critical — Fix Now |
 
 
-### Screen dimming
+### Feedback variants
 
-When score stays below 50 % for 5 seconds, the app dims the phone display itself using the system brightness API. Brightness steps down by 10 per 200 ms to a floor of 5. It is fully restored as soon as posture corrects.
+Three buttons on the home screen choose the feedback. No session starts until one is chosen, and every session records which one was active.
+
+| Variant | Feedback |
+|---------|----------|
+| **A — Dimming** | Screen dims |
+| **B — Baseline** | Ghost of your calibrated posture drawn over other apps |
+| **C — Both** | Dimming and the ghost overlay together |
+
+Feedback fires when posture stays bad (score below 50 %) for 5 seconds while the app is in picture-in-picture, or when the phone angle stays bad for 5 seconds. Dimming uses the system brightness API: brightness steps down by 10 per 200 ms to a floor of 5, and is fully restored as soon as posture corrects. Voice alerts, vibration and the coloured border are the same in all three variants.
+
+### Participant ID
+
+Before the first session the app asks for a participant ID: at least 6 letters/numbers, stored exactly as typed (case-sensitive). Participants choose it on the onboarding form ([`study/participant_onboarding.html`](study/participant_onboarding.html)), and every session is tagged with it.
 
 ---
 
@@ -60,21 +72,26 @@ When score stays below 50 % for 5 seconds, the app dims the phone display itself
 - **Early-warning badges** — soft Head Rise / Head Drop indicators fire before a hard violation triggers
 - **Rule chips** — per-metric colour chips (Shoulders · Head Tilt · Hunching) hidden when phone position is bad
 - **Good-posture streak** — consecutive seconds at ≥ 80 %, displayed as a live counter and logged per session
+- **Three feedback variants** — dimming (A), baseline overlay (B), or both (C), chosen on the home screen
 - **Screen dimming** via system brightness API (not an overlay tint)
 - **Ghost skeleton overlay** — draws your baseline skeleton on top of any app via `SYSTEM_ALERT_WINDOW`, 5 s after bad posture starts
 - **Picture-in-Picture (PiP)** — compact floating window; monitoring continues while you use other apps
 - **Accelerometer-only mode** — close PiP entirely and the accelerometer keeps monitoring phone tilt in the background with no camera needed
+- **Frame-rate throttling** — pose detection runs at 3 FPS in PiP and 15 FPS full-screen (see [`study/results/SECTION1_RESULTS.md`](study/results/SECTION1_RESULTS.md))
 - **Android Foreground Service** — OS cannot kill the monitoring process; a notification keeps it alive
 - **Session history** stored locally in SQLite — per-second posture log, overall score, time in each zone, longest streak
+- **Device metrics** — battery, temperature, CPU and thermal status sampled every 15 s during each session
+- **Telemetry integrity check** — every session is checked for gaps and missing or out-of-order timestamps before upload; failing sessions stay on the phone
+- **Study upload** — finished sessions are queued and sent to the study server, retried when offline
 - **Session charts** rendered with fl_chart
 - **Dark mode** support throughout
-- **No cloud, no account, no tracking** — all data stays on device
+- **No account, no ads, no analytics**
 
 ---
 
 ## Requirements
 
-- **Android 5.0+ (API 21+)**
+- **Android 8.0+ (API 26+)** for the study. The build installs from Android 7.0 (API 24, Flutter's default `minSdk`), but picture-in-picture on phones — and with it feedback while using other apps — needs Android 8.0
 - Front-facing camera
 - The following permissions are requested at runtime:
   - `CAMERA`
@@ -90,7 +107,7 @@ When score stays below 50 % for 5 seconds, the app dims the phone display itself
 
 - [Flutter SDK](https://docs.flutter.dev/get-started/install) 3.x
 - Android Studio or VS Code with the Flutter extension
-- An Android device or emulator (API 21+)
+- An Android device or emulator (API 26+)
 
 ### Install
 
@@ -114,6 +131,14 @@ Connect an Android device via USB with developer mode and USB debugging enabled,
 flutter run
 ```
 
+Sessions are uploaded only when the study server address is set at build time:
+
+```bash
+flutter run --release --dart-define=API_BASE_URL=https://your-server
+```
+
+Without it, finished sessions stay queued on the phone and nothing is sent.
+
 ### Build release APK
 
 ```bash
@@ -129,27 +154,42 @@ Output: `build/app/outputs/flutter-apk/app-release.apk`
 ```
 lib/
 ├── main.dart                     # App entry point, background service init
+├── config.dart                   # Server URL (--dart-define) and detection frame rates
 ├── background_service.dart       # Android foreground service setup
 │
 ├── models/
 │   ├── calibration_data.dart     # Stored baseline landmarks + accel vector + thresholds
 │   ├── posture_status.dart       # good / warning / bad enum + score → status mapping
-│   └── session_summary.dart      # Per-session stats model
+│   ├── session_summary.dart      # Per-session stats model (incl. user_id, variant)
+│   ├── feedback_variant.dart     # A — Dimming / B — Baseline / C — Both
+│   ├── integrity_report.dart     # Telemetry integrity check result
+│   └── device_metrics_summary.dart # Per-session battery / CPU / temperature summary
 │
 ├── services/
 │   ├── camera_service.dart       # CameraX controller (NV21 format)
 │   ├── detection_service.dart    # ML Kit pose detection + landmark normalisation
+│   ├── frame_rate_limiter.dart   # Drops camera frames down to a target FPS
 │   ├── posture_analyzer.dart     # NTS ratio, accel pitch diff, 7-violation detection, hysteresis
 │   ├── feedback_service.dart     # TTS alerts, vibration, 30-frame score window, streak tracking
 │   ├── calibration_service.dart  # 5-second baseline capture, threshold derivation, persistence
 │   ├── movement_service.dart     # Accelerometer EMA smoothing
 │   ├── overlay_service.dart      # Native overlay channel (SYSTEM_ALERT_WINDOW)
-│   └── database_service.dart     # SQLite session persistence
+│   ├── window_state_service.dart # Foreground / PiP / background state from MainActivity
+│   ├── participant_service.dart  # Participant ID rule and storage
+│   ├── variant_service.dart      # Selected feedback variant
+│   ├── device_metrics_service.dart   # One battery / CPU / thermal reading
+│   ├── session_metrics_recorder.dart # Samples device metrics every 15 s during a session
+│   ├── benchmark_runner.dart     # Frame-rate sweep for the Section 1 benchmarks
+│   ├── telemetry_integrity_service.dart # Pure validator: gaps, missing / out-of-order timestamps
+│   ├── telemetry_integrity_gate.dart    # Runs the validator before any upload
+│   ├── upload_payload.dart       # Builds the body defined in study/API_SCHEMA.md
+│   ├── upload_service.dart       # Upload queue, HTTPS POST, retries
+│   └── database_service.dart     # SQLite: sessions, events, device metrics, upload queue
 │
 ├── screens/
-│   ├── home_screen.dart          # Last session summary + navigation
+│   ├── home_screen.dart          # Participant ID, feedback variant, last session, navigation
 │   ├── calibration_screen.dart   # 5-second baseline capture UI
-│   ├── session_screen.dart       # Live monitoring — HUD, score, chips, dimming
+│   ├── session_screen.dart       # Live monitoring — HUD, score, chips, feedback
 │   ├── summary_screen.dart       # End-of-session results
 │   └── history_screen.dart       # Past sessions with charts
 │
@@ -165,6 +205,10 @@ android/
 └── app/src/main/kotlin/com/postureguard/postureguard/
     ├── MainActivity.kt
     └── OverlayService.kt         # Native foreground overlay service
+
+test/                             # Unit tests (integrity check, payload, metrics, participant ID)
+integration_test/                 # On-device frame-rate benchmark
+study/                            # Study plan, API schema, onboarding form + backend, results
 ```
 
 ---
@@ -182,10 +226,12 @@ android/
 | `fl_chart` | Session history charts |
 | `permission_handler` | Runtime permission requests |
 | `wakelock_plus` | Keep screen on during sessions |
-| `shared_preferences` | Calibration baseline persistence |
+| `shared_preferences` | Calibration baseline, participant ID and variant persistence |
+| `http` | Session upload to the study server |
+| `path_provider` | CSV output location for benchmarks and session metrics |
 
 ---
 
 ## Privacy
 
-All data is stored on-device. PostureGuard does not connect to the internet, does not require an account, and does not include ads or analytics.
+Camera frames are processed on the phone and never stored or uploaded. Sessions are stored in SQLite on the phone; when a study server address is set at build time, each finished session is uploaded to it: the participant ID, feedback variant, per-second posture zones, session summary, device metrics and phone model. The full field list is in [`study/API_SCHEMA.md`](study/API_SCHEMA.md), and participants agree to it on the onboarding form. Without a server address nothing leaves the phone. There is no account, and no ads or analytics.
