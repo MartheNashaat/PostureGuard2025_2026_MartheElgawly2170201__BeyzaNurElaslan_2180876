@@ -111,12 +111,12 @@ ignored). Any non-2xx response makes the app retry later.
 |---|---|---|
 | `user_id` | string | Participant ID entered on the phone: 6+ letters/numbers, stored exactly as typed (case-sensitive). Set once per phone and kept until the user edits it. Groups sessions per participant. The participant chooses it on the onboarding form under the same rule, so it joins to the `participants` sheet. `null` only for sessions recorded before ID entry existed. |
 | `session_id` | string | Unique **per device**, not globally (it is the start time in ms). Use `(user_id, session_id)` as the key. |
-| `variant` | `"A"` \| `"B"` \| `"C"` | **Required.** A = dimming only, B = baseline overlay only, C = both. Chosen by the user on the home screen. Under crossover this is the only way to tell which arm produced a session. |
+| `variant` | `"A"` \| `"B"` | **Required.** A = dimming only, B = baseline overlay only. Chosen by the participant on the home screen; each participant uses one version for the whole study, so this puts their sessions in the A or B group. The app also has `"C"` (both), hidden from participants (decision of 15 Oct 2026) — sessions with `C` come only from internal testing and are excluded from analysis. |
 | `app_version` | string | Build name + number. |
 | `session.*` | | Same values the app shows on its Summary screen. |
 | `device.*` | | Needed because battery/temperature aren't comparable across phone models. |
 | `detection.*` | number | Frame rates the session ran at. Constant today; recorded so a later change doesn't silently mix data. |
-| `integrity.*` | | Result of the on-device check. The app does not upload sessions that fail it, so `is_valid` will be `true`; the counts are kept for reporting. |
+| `integrity.*` | | Result of the on-device check. Clean sessions are uploaded with `is_valid: true`. **Gap-only sessions are uploaded too** (decision of 15 Oct 2026): `is_valid` is `false` and `gap_count` says how many gaps — a gap is more than 2 s between two readings, usually Android throttling the app in the background. Any other failure (out-of-order or duplicate timestamps, missing timestamps, summary mismatch, empty session) is never uploaded. The server must accept `is_valid: false`; keep `gap_count` so analysis can exclude or adjust for gappy sessions. |
 | `events[]` | array | One row **per second** for the whole session (a 60-min session ≈ 3,600 rows, ~90 KB). `status`: `0` = good, `1` = warning, `2` = bad. While PiP is closed (accelerometer-only mode) the status comes from the phone angle alone. |
 | `device_metrics[]` | array | One row **every 15 s** (60 min ≈ 240 rows). `cpu_percent` is PostureGuard's own process only, normalised to 0–100 across all cores; `null` on the first row. `thermal_status`: `none`, `light`, `moderate`, `severe`, `critical`, `emergency`, `shutdown`, `unsupported`, `unknown`. `app_state`: `foreground`, `pip` (user in another app) or `background` (PiP closed — camera off, accelerometer-only mode). |
 | `device_metrics_summary` | object | Computed on the phone from `device_metrics[]`. Redundant with it, but saves recomputing for every query. `battery_percent_per_hour` excludes charging intervals and is `null` under 1 min of discharge. |
@@ -172,5 +172,7 @@ The app builds and queues this payload now (`lib/services/upload_payload.dart`,
 server address is missing: until it is set, finished sessions wait in the
 phone's `upload_queue` table and nothing is lost.
 
-Sessions that fail the integrity check are marked `blocked` in the queue and
-never sent.
+Today every session that fails the integrity check is marked `blocked` in the
+queue and never sent, gaps included. Per the decision of 15 October 2026 this
+changes: gap-only sessions will be sent with `is_valid: false`, and only the
+other failures stay `blocked`. Not yet implemented in the app.
