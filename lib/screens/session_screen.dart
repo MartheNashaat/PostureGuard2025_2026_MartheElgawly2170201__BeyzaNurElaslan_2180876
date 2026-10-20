@@ -560,6 +560,8 @@ void didChangeAppLifecycleState(AppLifecycleState state) {
     });
 
     _logTimer?.cancel();
+    // Let in-flight inserts land before the summary is computed from them.
+    await _pendingLog;
     await _metricsRecorder?.stop();
     _elapsedTimer?.cancel();
     _angleBadTimer?.cancel();
@@ -578,6 +580,7 @@ void didChangeAppLifecycleState(AppLifecycleState state) {
       variant: _variant.code,
       userId: _participantId,
     );
+    await UploadService.clearSessionActive();
     await SessionMetricsRecorder.exportSession(_sessionId);
     await UploadService.enqueueAndFlush(_sessionId);
     if (mounted) {
@@ -1154,10 +1157,31 @@ Widget _buildControls() {
     );
   }
 
+  // Event timestamps come from a monotonic stopwatch anchored to the wall
+  // clock once, so network-time syncs or manual clock changes mid-session
+  // can't make them jump backwards or repeat.
+  final Stopwatch _logClock = Stopwatch();
+  int _logStartMs = 0;
+  int _lastLoggedTs = 0;
+  Future<void> _pendingLog = Future.value();
+
+  void _logOnce() {
+    final ts = _logStartMs + _logClock.elapsedMilliseconds;
+    // Timer callbacks can burst after Android throttling; keep strictly increasing.
+    _lastLoggedTs = ts > _lastLoggedTs ? ts : _lastLoggedTs + 1;
+    final stamp = _lastLoggedTs;
+    final status = _loggedStatus;
+    _pendingLog = _pendingLog.then((_) => DatabaseService.logEvent(
+        sessionId: _sessionId, status: status, timestampMs: stamp));
+  }
+
   void _startLogging() {
-    _logTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      DatabaseService.logEvent(sessionId: _sessionId, status: _loggedStatus);
-    });
+    unawaited(UploadService.markSessionActive(
+        _sessionId, _variant.code, _participantId));
+    _logStartMs = DateTime.now().millisecondsSinceEpoch;
+    _logClock.start();
+    _logOnce(); // first sample immediately, so no session is ever empty
+    _logTimer = Timer.periodic(const Duration(seconds: 1), (_) => _logOnce());
     _metricsRecorder = SessionMetricsRecorder(
       sessionId: _sessionId,
       appState: () => WindowStateService.state.value,

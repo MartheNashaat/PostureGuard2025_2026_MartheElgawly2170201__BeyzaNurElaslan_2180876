@@ -191,7 +191,8 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
         const SizedBox(height: 8),
         Row(
           children: [
-            for (final v in FeedbackVariant.values) ...[
+            // C (both) is hidden from participants for now; it still works.
+            for (final v in FeedbackVariant.values.where((v) => v != FeedbackVariant.both)) ...[
               if (v != FeedbackVariant.values.first) const SizedBox(width: 8),
               Expanded(child: _variantButton(v)),
             ],

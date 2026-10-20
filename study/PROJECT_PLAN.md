@@ -23,9 +23,10 @@ note on what was built or what changed.
 - **Participant IDs** — chosen by the participant (6+ letters/numbers,
   case-sensitive), in both the app and the onboarding form. The earlier
   `PG-XXXX-XXXX` generated IDs are gone.
-- **Decided** — Version C (both) is hidden from participants for now.
-- **Decided** — sessions whose only defect is gaps are uploaded with the gap
-  count; only seriously broken sessions are blocked. See Section 1.
+- **Done** — Version C (both) is hidden from participants for now.
+- **Done** — sessions whose only defect is gaps are uploaded with the gap
+  count; only seriously broken sessions are blocked. Crash recovery added.
+  See Section 1.
 
 ### Decisions of 15 October 2026
 
@@ -37,8 +38,8 @@ note on what was built or what changed.
 | 4 | **No ethics committee approval is needed** for now. The form says the study is carried out with the approval of the project supervisor. | Ethics placeholders and the ethics-approval steps removed from the form, `study/README.md` and this plan. **Done.** | Beyza |
 
 Decisions 3 and 4 are done in the form, Apps Script and `study/README.md`.
-Decisions 1 and 2 still need app changes; each affected task below carries a
-⚠️.
+Decisions 1 and 2 are done in the app (20 October 2026). Decision 1 goes
+slightly further than written: see Section 1.
 
 | Status | Meaning |
 |---|---|
@@ -83,10 +84,27 @@ uploaded session. — *Beyza*
 > figure is the ML Kit inference rate, and those results are never written to
 > the database.
 >
-> ⚠️ **Decision 1 (15 Oct):** the gate currently blocks every session with
-> any issue, gaps included. Gap-only sessions (`report.hasOnlyGaps`) must be
-> uploaded with their gap count instead; everything else stays blocked. Not
-> yet changed in code.
+> ✅ **Decision 1 (15 Oct), done 20 Oct:** sessions whose only problem is
+> gaps are uploaded with `is_valid = false` and their `gap_count`. Long gaps
+> also leave fewer samples than the span implies, so a `sampleCountMismatch`
+> that comes *with* gaps is accepted too (`report.hasOnlyGapEffects`);
+> `gap_count` is always > 0 for these, which the server already requires.
+> Everything else stays blocked. Not yet tested against a real server.
+>
+> ✅ **Recording fixes (20 Oct)**, so the other checks don't block real
+> sessions:
+>
+> - Event timestamps come from a monotonic stopwatch anchored to the wall
+>   clock once, and are kept strictly increasing — no backward jumps or
+>   duplicates from clock syncs or timer bursts.
+> - The first event is logged at session start, so no session is empty.
+> - Pending inserts finish before the summary is computed, and the summary's
+>   end time is the last event's — no duration or end-time mismatch.
+> - **Crash recovery:** a session cut off by a crash or force-stop is
+>   finished from its saved events on the next app start and queued.
+>   Tested on the phone 20 Oct (force-stop → 44 s session recovered).
+> - Blocked sessions are re-checked on every app start, so ones blocked by
+>   older rules get uploaded if they now pass.
 
 ✅ **DONE** · Prepare user onboarding / consent forms (Google Form or a simple
 web form) linked to each participant's unique user ID. — *Beyza*
@@ -130,11 +148,12 @@ and detection logic in both. — *Marthe*
 > Dimming** (sun icon), **B — Baseline** (person icon), **C — Both**. A dims
 > the screen and shows no baseline drawing; B shows the baseline drawing and
 > does not dim; C does both. Voice alerts, vibration and the coloured border
-> stay in all three. Each session stores its variant. Still to check on the
-> phone.
+> stay in all three. Each session stores its variant. A and B checked on the
+> phone 20 Oct.
 >
-> ⚠️ **Decision 2 (15 Oct):** hide the C button from participants for now;
-> participants choose between A and B only. Not yet changed in code.
+> ✅ **Decision 2 (15 Oct), done 20 Oct:** the C button is hidden; only A
+> and B can be selected. C still works in code and on the server. A phone
+> that already had C selected keeps running C.
 >
 > **Decision 3 (15 Oct):** the participant's own choice on the home screen
 > *is* the study design — no order is assigned and nobody switches versions.
@@ -149,7 +168,8 @@ doesn't lose timestep data — queue and retry once connectivity returns.
 
 > `upload_queue` table: each finished session is queued, then sent; failures
 > stay `pending` and retry after the next session, on app start, and when the
-> home screen opens. The integrity check runs before sending, as below;
+> home screen opens. A `422` from the server marks the session `blocked`
+> (resending can't succeed) and is not retried. The integrity check runs before sending, as below;
 > failing sessions are marked `blocked` and kept on the phone.
 
 > Run the integrity check before the queue flushes, not after, so a corrupted
@@ -428,14 +448,17 @@ at the end.
 
 ### Marthe
 
-1. Decision 1: upload gap-only sessions (`report.hasOnlyGaps`) with their gap
-   count; keep blocking every other integrity failure.
-2. Decision 2: hide the C button from participants.
-3. Treat a `422` from the server as `blocked`, not `pending` — retrying a
-   refused payload never succeeds (see `study/API_SCHEMA.md`).
-4. Test A and B on the phone.
+1. ~~Decision 1: upload gap-only sessions.~~ Done 20 Oct.
+2. ~~Decision 2: hide the C button.~~ Done 20 Oct.
+3. ~~Treat a `422` from the server as `blocked`.~~ Done 20 Oct.
+4. ~~Test A and B on the phone.~~ Done 20 Oct.
 5. Once Beyza's server is up: build with its address and run the Section 6
-   end-to-end test.
+   end-to-end test, including a gap session.
+
+Build note: the project path is too long for Windows' 260-character limit
+and the build fails writing shader files. Build from a short drive
+(`subst P: <project folder>`, then build in `P:\`) or enable Windows long
+paths.
 
 ---
 

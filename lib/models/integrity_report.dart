@@ -117,6 +117,15 @@ class IntegrityReport {
   bool get hasOnlyGaps =>
       !isValid && issues.every((i) => i.type == IntegrityIssueType.gap);
 
+  /// Gaps, plus the sample shortfall that long gaps cause on their own.
+  /// Such a session is real data with holes, and is uploaded with its counts.
+  bool get hasOnlyGapEffects =>
+      !isValid &&
+      gapCount > 0 &&
+      issues.every((i) =>
+          i.type == IntegrityIssueType.gap ||
+          i.type == IntegrityIssueType.sampleCountMismatch);
+
   /// Serializable form, for embedding in an upload envelope or a local log.
   Map<String, dynamic> toMap() => {
         'session_id': sessionId,
