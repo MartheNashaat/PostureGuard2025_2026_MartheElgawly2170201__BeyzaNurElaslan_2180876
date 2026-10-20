@@ -91,11 +91,12 @@ class DatabaseService {
   static Future<void> logEvent({
     required String sessionId,
     required PostureStatus status,
+    int? timestampMs,
   }) async {
     final db = await database;
     await db.insert('posture_events', {
       'session_id': sessionId,
-      'timestamp': DateTime.now().millisecondsSinceEpoch,
+      'timestamp': timestampMs ?? DateTime.now().millisecondsSinceEpoch,
       'status': status.value,
     });
   }
@@ -160,6 +161,19 @@ class DatabaseService {
       'UPDATE upload_queue SET status = ?, last_error = ?, updated_at = ?, '
       'attempts = attempts + ? WHERE session_id = ?',
       [status, error, DateTime.now().millisecondsSinceEpoch, countAttempt ? 1 : 0, sessionId],
+    );
+  }
+
+  /// Give blocked sessions another pass through the integrity gate. Ones that
+  /// still fail are simply marked `blocked` again. Sessions the server itself
+  /// refused (HTTP 422) are left alone: resending them can't succeed.
+  static Future<void> requeueBlockedUploads() async {
+    final db = await database;
+    await db.rawUpdate(
+      "UPDATE upload_queue SET status = 'pending', updated_at = ? "
+      "WHERE status = 'blocked' "
+      "AND (last_error IS NULL OR last_error NOT LIKE 'HTTP 422%')",
+      [DateTime.now().millisecondsSinceEpoch],
     );
   }
 
@@ -287,9 +301,11 @@ class DatabaseService {
       );
     }
 
+    // Stamp the end at the last recorded event, not after teardown, so slow
+    // camera/service shutdown can't push it past the integrity tolerance.
     final summary = SessionSummary(
       sessionId: sessionId,
-      date: DateTime.now(),
+      date: DateTime.fromMillisecondsSinceEpoch(lastTs),
       durationSeconds: durationSeconds,
       goodPosturePercent: goodPercent,
       longestStreakSeconds: longestStreak,

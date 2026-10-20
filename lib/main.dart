@@ -24,8 +24,9 @@ void main() async {
   // Initialize the background service configuration
   await initializeService();
   await WindowStateService.init();
-  // Retry anything left over from an earlier session (e.g. was offline).
-  unawaited(UploadService.flush());
+  // Finish a session cut off by a crash, re-check blocked ones, then retry
+  // anything left over from an earlier session (e.g. was offline).
+  unawaited(UploadService.recoverOnStartup().then((_) => UploadService.flush()));
 
   SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   runApp(const PostureGuardApp());

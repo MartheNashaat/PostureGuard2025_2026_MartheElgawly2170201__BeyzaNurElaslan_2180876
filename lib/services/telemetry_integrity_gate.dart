@@ -93,7 +93,10 @@ class TelemetryIntegrityGate {
       gapTolerance: gapTolerance,
     );
 
-    if (!report.isValid) {
+    // Gap-only sessions (e.g. Android throttling the app in the background)
+    // are still uploaded; the payload carries their gap count. A sample-count
+    // shortfall caused by those gaps is accepted with them.
+    if (!report.isValid && !report.hasOnlyGapEffects) {
       return UploadGateResult._(report, null);
     }
 

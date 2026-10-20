@@ -25,6 +25,47 @@ class UploadService {
   static bool _flushing = false;
   static DeviceInfo? _deviceInfo;
 
+  static const _activeSessionKey = 'active_session';
+
+  /// Remember the running session so it can be finished after a crash.
+  static Future<void> markSessionActive(
+      String sessionId, String variant, String userId) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_activeSessionKey,
+        jsonEncode({'id': sessionId, 'variant': variant, 'user': userId}));
+  }
+
+  static Future<void> clearSessionActive() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_activeSessionKey);
+  }
+
+  /// Run once at app start, before [flush]:
+  /// - a session still marked active was killed mid-way (crash, force-close);
+  ///   build its summary from the events already saved and queue it.
+  /// - blocked sessions are re-checked, since the gate rules may have changed.
+  static Future<void> recoverOnStartup() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_activeSessionKey);
+      if (raw != null) {
+        final s = jsonDecode(raw) as Map<String, dynamic>;
+        final id = s['id'] as String;
+        final events = await DatabaseService.getSessionEvents(id);
+        if (events.isNotEmpty &&
+            await DatabaseService.getSession(id) == null) {
+          await DatabaseService.endSession(id,
+              variant: s['variant'] as String, userId: s['user'] as String);
+          await DatabaseService.enqueueUpload(id);
+        }
+        await prefs.remove(_activeSessionKey);
+      }
+      await DatabaseService.requeueBlockedUploads();
+    } catch (e) {
+      debugPrint('UploadService: startup recovery failed: $e');
+    }
+  }
+
   /// Queue a just-finished session and try to send everything pending.
   static Future<void> enqueueAndFlush(String sessionId) async {
     await DatabaseService.enqueueUpload(sessionId);
@@ -71,6 +112,12 @@ class UploadService {
           if (response.statusCode >= 200 && response.statusCode < 300) {
             await DatabaseService.updateUpload(sessionId,
                 status: 'sent', countAttempt: true);
+          } else if (response.statusCode == 422) {
+            // The server refused the payload itself; resending can't succeed.
+            await DatabaseService.updateUpload(sessionId,
+                status: 'blocked',
+                error: 'HTTP 422: ${response.body}',
+                countAttempt: true);
           } else {
             await DatabaseService.updateUpload(sessionId,
                 status: 'pending',
