@@ -164,17 +164,42 @@ class DatabaseService {
     );
   }
 
+  /// Text the study server puts in its 422 answer when a session's user_id
+  /// has no onboarding registration (backend/app/main.py).
+  static const unregisteredUserError = 'user_id is not registered';
+
   /// Give blocked sessions another pass through the integrity gate. Ones that
   /// still fail are simply marked `blocked` again. Sessions the server itself
-  /// refused (HTTP 422) are left alone: resending them can't succeed.
-  static Future<void> requeueBlockedUploads() async {
+  /// refused (HTTP 422) are left alone: resending them can't succeed. The
+  /// exception is a session refused as unregistered under [currentUserId]:
+  /// the participant may have registered since, so it is tried again.
+  static Future<void> requeueBlockedUploads({String? currentUserId}) async {
     final db = await database;
     await db.rawUpdate(
       "UPDATE upload_queue SET status = 'pending', updated_at = ? "
       "WHERE status = 'blocked' "
-      "AND (last_error IS NULL OR last_error NOT LIKE 'HTTP 422%')",
-      [DateTime.now().millisecondsSinceEpoch],
+      "AND (last_error IS NULL OR last_error NOT LIKE 'HTTP 422%' "
+      "OR (last_error LIKE ? AND session_id IN "
+      "(SELECT session_id FROM sessions WHERE user_id = ?)))",
+      [
+        DateTime.now().millisecondsSinceEpoch,
+        '%$unregisteredUserError%',
+        currentUserId,
+      ],
     );
+  }
+
+  /// IDs whose sessions the server refused because they aren't registered.
+  static Future<Set<String>> getUnregisteredUserIds() async {
+    final db = await database;
+    final rows = await db.rawQuery(
+      'SELECT DISTINCT s.user_id FROM upload_queue q '
+      'JOIN sessions s ON s.session_id = q.session_id '
+      "WHERE q.status = 'blocked' AND q.last_error LIKE ? "
+      'AND s.user_id IS NOT NULL',
+      ['%$unregisteredUserError%'],
+    );
+    return {for (final r in rows) r['user_id'] as String};
   }
 
   static Future<Map<String, int>> getUploadCounts() async {

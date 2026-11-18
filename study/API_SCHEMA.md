@@ -175,7 +175,7 @@ flattened into `sessions`, so most analysis queries only touch one table.
 | Clean or gap-only session | `200 {"ok": true}` |
 | Same `(user_id, session_id)` again | `200 {"ok": true, "duplicate": true}` — first copy kept |
 | Payload breaks a rule (bad `user_id` or `variant`, events out of order, `is_valid: false` without gaps, missing timestamps, no events) | `422` with the reason |
-| `user_id` has no onboarding registration, when the server runs with `REQUIRE_REGISTERED_USER=true` (to be turned on before recruiting) | `422` `user_id is not registered`. Exact match, case included. The app should tell the participant to check their ID. |
+| `user_id` has no onboarding registration, when the server runs with `REQUIRE_REGISTERED_USER=true` (on by default in deployment) | `422` `user_id is not registered`. Exact match, case included. The app marks the session `blocked`, shows a warning under the ID on the home screen, and retries it on the next start if the ID is unchanged (the participant may register late). |
 
 A `422` will never succeed on retry; see the note for the app below.
 
@@ -188,7 +188,9 @@ and every field above is produced. Since 20 October 2026 the app follows the
 decision of 15 October: clean and gap-only sessions are sent, every other
 integrity failure is marked `blocked` in the phone's `upload_queue` and never
 sent, and a `422` from the server also marks the session `blocked` instead of
-retrying it.
+retrying it. The one exception is `user_id is not registered`: the home
+screen warns the participant, and the session is retried on the next app
+start while the ID is unchanged.
 
 The server is to be hosted at `https://postureguard.test.sapienzaapps.it`;
 build the app with `--dart-define=API_BASE_URL=` set to that address. Until

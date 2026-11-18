@@ -1,6 +1,6 @@
 # API + PostgreSQL. Put the settings in backend/.env (not committed):
 #   POSTGRES_PASSWORD=change-me
-#   REQUIRE_REGISTERED_USER=false   # set true before recruiting
+#   REQUIRE_REGISTERED_USER=true    # refuse sessions from unregistered IDs
 # then: docker compose up -d --build
 services:
   db:
@@ -22,7 +22,7 @@ services:
     restart: unless-stopped
     environment:
       DATABASE_URL: postgresql+psycopg://postureguard:${POSTGRES_PASSWORD}@db:5432/postureguard
-      REQUIRE_REGISTERED_USER: ${REQUIRE_REGISTERED_USER:-false}
+      REQUIRE_REGISTERED_USER: ${REQUIRE_REGISTERED_USER:-true}
       ONBOARDING_FORM: /srv/onboarding.html
     volumes:
       # Served at /onboarding; a git pull updates it without a rebuild.

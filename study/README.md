@@ -99,15 +99,20 @@ responses.
    must be refused as "already taken". Try an ID containing the test name —
    also refused.
 5. Print the confirmation screen to PDF and check the participant ID is legible.
-6. **Delete the test registrations before recruiting**, or their IDs stay
-   taken:
+6. **Delete the test data before recruiting** — test registrations, or
+   their IDs stay taken, and the sessions uploaded with them (the
+   end-to-end test uses a registered test ID):
    ```bash
    docker compose exec db psql -U postureguard -c \
-     "DELETE FROM participants WHERE user_id = '<test id>';"
+     "DELETE FROM sessions WHERE user_id = '<test id>';
+      DELETE FROM participants WHERE user_id = '<test id>';"
    ```
-   The matching `participant_identities` row goes with it.
-7. Set `REQUIRE_REGISTERED_USER=true` in `backend/.env` and run
-   `docker compose up -d`, so sessions from unregistered IDs are refused.
+   The matching events, device metrics and `participant_identities` row go
+   with them.
+
+The server refuses sessions from unregistered IDs from the start
+(`REQUIRE_REGISTERED_USER=true`, the Docker default), so test devices
+register a test ID on the form before uploading.
 
 ---
 
@@ -144,9 +149,9 @@ Mitigations, in order of effort:
 2. During the study, `scripts.status` on the server lists every uploaded
    `user_id` with no registration, and says when only the capitalisation
    differs. Contact those participants.
-3. With `REQUIRE_REGISTERED_USER=true` the server refuses those sessions
-   (`422`), so they never mix into the data. The app should then tell the
-   participant to check their ID — to be added in the app (Marthe).
+3. With `REQUIRE_REGISTERED_USER=true` (on by default) the server refuses those sessions
+   (`422`), so they never mix into the data. The app then shows a warning
+   under the ID on its home screen, asking the participant to check it.
 
 ---
 

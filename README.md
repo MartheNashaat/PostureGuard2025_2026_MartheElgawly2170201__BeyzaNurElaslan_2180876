@@ -82,7 +82,7 @@ Before the first session the app asks for a participant ID: at least 6 letters/n
 - **Session history** stored locally in SQLite — per-second posture log, overall score, time in each zone, longest streak
 - **Device metrics** — battery, temperature, CPU and thermal status sampled every 15 s during each session
 - **Telemetry integrity check** — every session is checked for gaps and missing or out-of-order timestamps before upload; sessions whose only defect is gaps are uploaded with their gap count, any other failure stays on the phone
-- **Study upload** — finished sessions are queued and sent to the study server, retried when offline
+- **Study upload** — finished sessions are queued and sent to the study server, retried when offline; if the server doesn't recognise the participant ID, the home screen says so
 - **Session charts** rendered with fl_chart
 - **Dark mode** support throughout
 - **No account, no ads, no analytics**

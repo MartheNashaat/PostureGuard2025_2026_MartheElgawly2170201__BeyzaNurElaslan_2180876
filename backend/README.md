@@ -25,7 +25,7 @@ git clone https://github.com/MartheNashaat/PostureGuard2025_2026_MartheElgawly21
 cd postureguard/backend
 cat > .env <<'EOF'
 POSTGRES_PASSWORD=<a long random password>
-REQUIRE_REGISTERED_USER=false
+REQUIRE_REGISTERED_USER=true
 EOF
 docker compose up -d --build
 curl http://127.0.0.1:8000/health        # {"ok":true}
@@ -48,7 +48,7 @@ change to an existing table needs a manual migration.
 | Variable | Meaning |
 |---|---|
 | `POSTGRES_PASSWORD` | Required. The database password. |
-| `REQUIRE_REGISTERED_USER` | `true` refuses sessions whose `user_id` has no registration (`422`). Leave `false` while testing with unregistered test IDs; **set `true` before recruiting**, then `docker compose up -d`. |
+| `REQUIRE_REGISTERED_USER` | `true` (the default in Docker) refuses sessions whose `user_id` has no registration (`422`). Test devices must register their test ID on the form first. Unset when running uvicorn locally, so local development accepts any ID. |
 
 ## Run locally
 

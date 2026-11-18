@@ -220,10 +220,12 @@ live. — *Beyza*
 > ✅ **Registration (18 Nov):** `POST /api/participants` stores the
 > onboarding form's submissions; the ID must be free, ignoring case. With
 > `REQUIRE_REGISTERED_USER=true` the server refuses sessions whose
-> `user_id` isn't registered (exact match, `422`) — turn it on before
-> recruiting. The app should tell the participant to check their ID when
-> that happens (Marthe). 48 server tests pass; checked in Docker with
-> PostgreSQL.
+> `user_id` isn't registered (exact match, `422`) — on from the start
+> (19 Nov), so test devices register a test ID on the form first. The app
+> then shows a warning under the ID on the home screen (tap to correct it),
+> and retries those sessions on the next start in case the participant
+> registers late. 48 server tests pass; checked in Docker with PostgreSQL.
+> The app warning is not yet tested on a phone.
 
 ✅ **DONE** · Wire the API client in the app: HTTPS POST, retry logic, and a
 device-identifier header on every request. — *Marthe*
@@ -423,7 +425,7 @@ required and no consequence.
 
 | When | Who | What |
 |---|---|---|
-| Before recruiting | Beyza | Fill the form's placeholders; have the supervisor review the consent text; run the test submissions in `study/README.md`; delete the test registrations; set `REQUIRE_REGISTERED_USER=true` |
+| Before recruiting | Beyza | Fill the form's placeholders; have the supervisor review the consent text; run the test submissions in `study/README.md`; delete the test registrations and test sessions |
 | Per participant, at signup | Beyza | Send the form link (`…/onboarding`); the server checks the ID is free |
 | Per participant, after signup | Marthe | Send the APK; remind them to pick one version and keep it |
 | During the study | Both | Run `scripts.status` on the server: it lists unregistered `user_id`s, participants with more than one `variant`, and the A vs. B split — a very uneven split weakens the comparison |
@@ -464,8 +466,9 @@ they are refused outright.
    `postureguard.test.sapienzaapps.it`. Once it's deployed, check
    `/health` and send the address to Marthe.
 5. ~~Move registration to the server.~~ Done 18 Nov. Before recruiting: run
-   the test submissions in `study/README.md`, delete them, and set
-   `REQUIRE_REGISTERED_USER=true`.
+   the test submissions in `study/README.md`, then delete the test
+   registrations and test sessions. The unregistered-ID check is on from
+   the start.
 
 ### Marthe
 
@@ -476,9 +479,12 @@ they are refused outright.
 5. Once Beyza's server is up: build with
    `--dart-define=API_BASE_URL=https://postureguard.test.sapienzaapps.it`
    and run the Section 6 end-to-end test, including a gap session.
-6. When the server answers `422` `user_id is not registered`, tell the
-   participant to check their ID (it is enforced once
-   `REQUIRE_REGISTERED_USER=true`).
+   **Register the test ID on the form first** (`…/onboarding`): the server
+   refuses sessions from unregistered IDs.
+6. ~~Warn the participant when the server answers `422`
+   `user_id is not registered`.~~ Built 19 Nov (Beyza): a warning under the
+   ID on the home screen. Not yet tested on a phone — try it once with a
+   wrong ID during the end-to-end test.
 
 Build note: the project path is too long for Windows' 260-character limit
 and the build fails writing shader files. Build from a short drive
