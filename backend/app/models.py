@@ -1,7 +1,8 @@
-"""Tables from the "Suggested database tables" section of study/API_SCHEMA.md.
+"""Tables from the "Database tables" section of study/API_SCHEMA.md, plus
+the onboarding form's registrations.
 
-Research data only. Names and emails from the onboarding form never go in
-these tables; they live in the restricted linking list (see the plan).
+Names, emails and signatures go only in `participant_identities`, the
+restricted linking list. Every other table is research data.
 """
 
 from datetime import datetime, timezone
@@ -12,6 +13,7 @@ from sqlalchemy import (
     Column,
     DateTime,
     Float,
+    ForeignKey,
     ForeignKeyConstraint,
     Index,
     Integer,
@@ -121,3 +123,62 @@ class DeviceMetric(Base):
     is_screen_on = Column(Boolean, nullable=False)
     is_power_save = Column(Boolean, nullable=False)
     app_state = Column(String(16))
+
+
+class Participant(Base):
+    """One row per onboarding form submission: consent and demographics."""
+
+    __tablename__ = "participants"
+
+    user_id = Column(String(20), primary_key=True)  # exactly as typed
+    # IDs are unique ignoring case, so look-alike IDs can't be mixed up when
+    # joining sessions to consent records.
+    user_id_lower = Column(String(20), nullable=False, unique=True)
+    received_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
+    submitted_at = Column(String(40))  # the browser's clock, as sent
+    form_version = Column(String(16))
+
+    consent_read = Column(Boolean, nullable=False)
+    consent_camera = Column(Boolean, nullable=False)
+    consent_upload = Column(Boolean, nullable=False)
+    consent_pseudonymous = Column(Boolean, nullable=False)
+    consent_withdraw = Column(Boolean, nullable=False)
+    consent_age = Column(Boolean, nullable=False)
+    consent_voluntary = Column(Boolean, nullable=False)
+    consent_followup = Column(Boolean, nullable=False)
+    consent_future = Column(Boolean, nullable=False)
+    consent_quotes = Column(Boolean, nullable=False)
+
+    age = Column(Integer)
+    occupation = Column(String(200))
+    screen_total = Column(String(64))
+    screen_phone = Column(String(64))
+    pain_freq = Column(String(64))
+    pain_area = Column(String(200))
+    pain_now = Column(Integer)
+    pain_treatment = Column(String(64))
+    desk_setup = Column(String(64))
+    chair = Column(String(64))
+    monitor_height = Column(String(64))
+    phone_hold = Column(String(64))
+    posture_aware = Column(String(64))
+
+    phone_model = Column(String(100))
+    android_version = Column(String(32))
+
+
+class ParticipantIdentity(Base):
+    """Restricted linking list: who a user_id is. Needed for withdrawal
+    requests; never exported with the research data."""
+
+    __tablename__ = "participant_identities"
+
+    user_id = Column(
+        String(20),
+        ForeignKey("participants.user_id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    full_name = Column(String(200), nullable=False)
+    email = Column(String(200), nullable=False)
+    signature = Column(String(200), nullable=False)
+    signed_date = Column(String(10), nullable=False)

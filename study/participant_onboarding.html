@@ -779,9 +779,11 @@
   //  CONFIGURATION — set this before using the form for real
   // ═══════════════════════════════════════════════════════════
 
-  // Google Apps Script Web App URL. See study/README.md for deployment.
-  // Leave as "" to run the form in offline mode (responses shown for manual copy).
-  var ENDPOINT = "";
+  // The study server's registration route. Served from the server
+  // (https://…/onboarding), the form posts to the same server. Opened as a
+  // local file there is no server, so the form runs in offline mode
+  // (responses shown for manual copy). See study/README.md.
+  var ENDPOINT = /^https?:$/.test(location.protocol) ? "/api/participants" : "";
 
   // ═══════════════════════════════════════════════════════════
   //  Participant ID — chosen by the participant.
@@ -941,7 +943,7 @@
   function collect() {
     var record = {
       submitted_at: new Date().toISOString(),
-      form_version: "1.2"
+      form_version: "1.3"
     };
 
     var data = new FormData(form);
@@ -1002,11 +1004,11 @@
     if (!ENDPOINT) {
       return Promise.resolve({ ok: false });
     }
-    // text/plain avoids a CORS preflight, which Apps Script Web Apps
-    // do not answer. Apps Script reads the body from e.postData.contents.
+    // A refusal (duplicate or invalid ID) comes back as a non-2xx status
+    // with {ok: false, error}, so read the body whatever the status.
     return fetch(ENDPOINT, {
       method: "POST",
-      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(record)
     })
       .then(function (r) { return r.json(); })

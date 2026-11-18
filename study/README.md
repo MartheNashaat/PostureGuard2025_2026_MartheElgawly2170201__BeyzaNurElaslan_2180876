@@ -6,7 +6,8 @@ linked to each participant's unique user ID."*
 | File | What it is |
 |---|---|
 | `participant_onboarding.html` | The form. Self-contained — no framework, no CDN, no build step. Open it in any browser. |
-| `apps_script_backend.gs` | Google Apps Script that receives submissions, checks the participant ID is free, and writes to a Sheet. |
+| `../backend/` | The study server. Serves the form at `/onboarding`, receives submissions at `POST /api/participants`, checks the participant ID is free. |
+| `apps_script_backend.gs` | **No longer used** (18 November 2026). The earlier Google Sheets backend, kept for reference. |
 | `API_SCHEMA.md` | What the app uploads per session. Section 2 of the form describes the same fields to participants. |
 
 ---
@@ -66,77 +67,47 @@ with what you actually do:
 
 ---
 
-## Step 2 — Create the Sheet and deploy the backend
+## Step 2 — Where the form runs
 
-1. Create a new Google Sheet, named e.g. `PostureGuard Participants`.
-2. **Extensions → Apps Script**. Delete the placeholder `myFunction`.
-3. Paste the whole of `apps_script_backend.gs`. Save.
-4. Run `selfTest` once from the editor. Google will ask you to authorise the
-   script — accept. Check the execution log: it should report the sheet is
-   ready. This also creates the `participants` tab with its header row.
-5. **Deploy → New deployment → Web app**:
-   - Description: `PostureGuard onboarding`
-   - **Execute as:** Me
-   - **Who has access:** Anyone
-6. Copy the deployment URL. It ends in `/exec`.
+**Decided 18 November 2026:** registrations go to the study server, not to a
+Google Sheet. The server is hosted by Sapienza and serves the form itself:
 
-> "Anyone" means anyone who has the URL can POST to it. It does not make your
-> Sheet public — only this script can write, and only in the shape it defines.
-> Treat the URL as a secret: do not commit it to a public repository.
-
-**Every time you edit the script**, you must deploy again
-(**Deploy → Manage deployments → edit → New version**), or the live endpoint
-keeps running the old code. This trips people up constantly.
-
----
-
-## Step 3 — Connect the form
-
-Open `participant_onboarding.html` and set the URL near the top of the
-`<script>` block:
-
-```js
-var ENDPOINT = "https://script.google.com/macros/s/AKfycb.../exec";
+```
+https://postureguard.test.sapienzaapps.it/onboarding
 ```
 
-Left empty, the form still works: it shows the participant's ID and their
-answers as JSON for manual copying. It
-cannot check whether the ID is already taken in this mode. Useful for
-testing, and as a safety net — a network failure never costs a participant
-their responses.
+That is the link participants get. Served from there, the form posts to
+`/api/participants` on the same server, so there is no endpoint URL to set
+and no cross-site request. Setup of the server: `backend/README.md`.
 
-The request is sent as `Content-Type: text/plain` on purpose. Apps Script web
-apps do not answer CORS preflight requests, so `application/json` would fail in
-the browser. Apps Script reads the body from `e.postData.contents` either way.
+Opened as a local file (double-clicked), the form runs in **offline mode**:
+it shows the participant's ID and their answers as JSON for manual copying,
+and cannot check whether the ID is taken. Useful for testing the layout, and
+as a safety net — a network failure never costs a participant their
+responses.
 
 ---
 
-## Step 4 — Test before recruiting
+## Step 3 — Test before recruiting
 
-1. Open the file in a browser and submit once with made-up answers.
-2. Check the Sheet: one row, with the `user_id` and a `received_at`
-   timestamp.
+1. Open the `/onboarding` link and submit once with made-up answers.
+2. On the server, `docker compose exec api python -m scripts.status` should
+   show one registered participant.
 3. Try to submit with a consent box unticked, and with age 17 — both must be
    refused with a message.
 4. Try to reuse an ID from step 1, also with different upper/lower case — it
    must be refused as "already taken". Try an ID containing the test name —
    also refused.
 5. Print the confirmation screen to PDF and check the participant ID is legible.
-6. **Delete the test rows before recruiting**, or their IDs stay taken.
-
----
-
-## Step 5 — Hosting
-
-| How | When it fits |
-|---|---|
-| Open the local file | In-person onboarding on your own laptop. Simplest, nothing to host. |
-| Email the `.html` file | Participants open it locally. Works, but some mail clients strip attachments. |
-| GitHub Pages | Remote participants, shareable link. Free. Put the file in a **private-repo-backed** Pages site or accept that the form markup is public — the `ENDPOINT` URL would be visible in source. |
-| Your own server | Best once the Section 3 backend exists. |
-
-Because the endpoint URL is visible in page source when hosted, prefer
-in-person or emailed use while recruitment is small.
+6. **Delete the test registrations before recruiting**, or their IDs stay
+   taken:
+   ```bash
+   docker compose exec db psql -U postureguard -c \
+     "DELETE FROM participants WHERE user_id = '<test id>';"
+   ```
+   The matching `participant_identities` row goes with it.
+7. Set `REQUIRE_REGISTERED_USER=true` in `backend/.env` and run
+   `docker compose up -d`, so sessions from unregistered IDs are refused.
 
 ---
 
@@ -150,15 +121,14 @@ one the app accepts:
   symbols. The form caps it at 20, the app's input limit.
 - **Case-sensitive, stored exactly as typed.** `Tiger42x` and `tiger42x` are
   different IDs in the app. Only spaces at the ends are removed.
-- **Unique, ignoring case.** The backend refuses an ID that is already in the
-  Sheet in any capitalisation, so two participants can't end up with
+- **Unique, ignoring case.** The server refuses an ID that is already
+  registered in any capitalisation, so two participants can't end up with
   look-alike IDs. The form then asks the participant to pick another one.
 - **Must not contain the participant's name or email.** The form refuses an ID
   that contains any 3+ letter part of the typed name or email address. This
   matters: the ID is the only thing on the research data that points back to
   a person, and "pseudonymised" stops being true if the ID is `Ayse1995`.
-- Stored as plain text in the Sheet, so an all-digit ID like `001234` keeps
-  its leading zeros.
+- Stored as text, so an all-digit ID like `001234` keeps its leading zeros.
 
 ### Typos are not caught
 
@@ -171,10 +141,12 @@ Mitigations, in order of effort:
 
 1. The confirmation screen tells participants case matters and offers copy
    and print.
-2. During the study, compare the `user_id`s arriving from the app against
-   the Sheet and contact anyone whose sessions don't match.
-3. Once the Section 3 server exists, it can refuse sessions whose `user_id` is
-   not registered, and the app can show that error.
+2. During the study, `scripts.status` on the server lists every uploaded
+   `user_id` with no registration, and says when only the capitalisation
+   differs. Contact those participants.
+3. With `REQUIRE_REGISTERED_USER=true` the server refuses those sessions
+   (`422`), so they never mix into the data. The app should then tell the
+   participant to check their ID — to be added in the app (Marthe).
 
 ---
 
@@ -198,45 +170,25 @@ puts a participant in the A or B group at analysis time.
 
 The app still lets participants change their choice at any time, so tell them
 to keep the version they picked, and check at analysis that each `user_id`
-has a single `variant`. Version C (both) is to be hidden from participants.
+has a single `variant`. Version C (both) is hidden from participants
+(since 20 October 2026); it remains for internal testing only.
 
 ---
 
 ## Where the data lands
 
-The `participants` sheet holds everything in one table for convenience. For the
-real study, split it:
+On the study server, in two kinds of table:
 
-- **Linking list** — `user_id`, `full_name`, `email`, `signature`,
-  `signed_date`. Restricted access, separate file, not shared with anyone
-  outside the research team.
-- **Research data** — `user_id` and the demographic and device answers,
-  joined to the sessions (which carry `variant`) on `user_id`. This is what you analyse and what can be shared or published
-  alongside the session telemetry.
+- **Linking list** — `participant_identities`: `user_id`, `full_name`,
+  `email`, `signature`, `signed_date`. Needed to act on a withdrawal
+  request. Not shared with anyone outside the research team.
+- **Research data** — `participants` (consent answers, demographics,
+  device) and the session tables, all joined on `user_id`. This is what you
+  analyse and what can be shared or published.
 
 Keeping them apart is what makes "pseudonymised" true in practice rather than
-just in the consent text. `apps_script_backend.gs` writes the identity columns
-in one contiguous block, so splitting is a column-range copy.
+just in the consent text.
 
-**CSV export:** File → Download → Comma-separated values, on the
-`participants` tab.
-
----
-
-## Moving to the real backend later
-
-Section 3 replaces the Sheet with FastAPI/Flask plus Postgres. Only one
-function in the HTML needs to change — `send()`. Point `ENDPOINT` at your own
-route and keep the response contract:
-
-```json
-{ "ok": true }
-{ "ok": false, "error": "duplicate user_id" }
-```
-
-Everything else — validation, the confirmation screen, the offline
-fallback — is independent of where the data goes. Keep the server-side checks
-the Apps Script does: the ID rule, and uniqueness ignoring case.
-
-The `COLUMNS` array in `apps_script_backend.gs` doubles as the column list for
-the `participants` table when you write the schema.
+**CSV export:** `docker compose exec api python -m scripts.export /srv/export`
+writes the research tables only; `--with-identities` adds `identities.csv`,
+to be stored separately. See `backend/README.md`.

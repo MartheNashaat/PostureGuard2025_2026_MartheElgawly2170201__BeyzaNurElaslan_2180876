@@ -112,3 +112,77 @@ class SessionUpload(_Model):
                 "sessions may be uploaded as invalid"
             )
         return self
+
+
+# ── Onboarding form ──────────────────────────────────────────────────────────
+
+# Statements the form will not submit without; the optional ones
+# (followup, future, quotes) are stored either way.
+REQUIRED_CONSENTS = (
+    "consent_read",
+    "consent_camera",
+    "consent_upload",
+    "consent_pseudonymous",
+    "consent_withdraw",
+    "consent_age",
+    "consent_voluntary",
+)
+
+
+class Registration(_Model):
+    """Body of POST /api/participants, as study/participant_onboarding.html
+    sends it: every value is a string, consents are "yes"/"no"."""
+
+    user_id: str = Field(pattern=USER_ID_PATTERN)
+    submitted_at: Optional[str] = Field(default=None, max_length=40)
+    form_version: Optional[str] = Field(default=None, max_length=16)
+
+    consent_read: bool
+    consent_camera: bool
+    consent_upload: bool
+    consent_pseudonymous: bool
+    consent_withdraw: bool
+    consent_age: bool
+    consent_voluntary: bool
+    consent_followup: bool = False
+    consent_future: bool = False
+    consent_quotes: bool = False
+
+    full_name: str = Field(min_length=1, max_length=200)
+    email: str = Field(min_length=3, max_length=200)
+    signature: str = Field(min_length=1, max_length=200)
+    signed_date: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
+
+    age: int = Field(ge=18, le=120)
+    occupation: Optional[str] = Field(default=None, max_length=200)
+    screen_total: Optional[str] = Field(default=None, max_length=64)
+    screen_phone: Optional[str] = Field(default=None, max_length=64)
+    pain_freq: Optional[str] = Field(default=None, max_length=64)
+    pain_area: Optional[str] = Field(default=None, max_length=200)
+    pain_now: Optional[int] = Field(default=None, ge=0, le=10)
+    pain_treatment: Optional[str] = Field(default=None, max_length=64)
+    desk_setup: Optional[str] = Field(default=None, max_length=64)
+    chair: Optional[str] = Field(default=None, max_length=64)
+    monitor_height: Optional[str] = Field(default=None, max_length=64)
+    phone_hold: Optional[str] = Field(default=None, max_length=64)
+    posture_aware: Optional[str] = Field(default=None, max_length=64)
+
+    phone_model: Optional[str] = Field(default=None, max_length=100)
+    android_version: Optional[str] = Field(default=None, max_length=32)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _trim(cls, data):
+        # Trim everything, and treat an unanswered field ("") as absent so an
+        # empty optional number isn't a type error.
+        if isinstance(data, dict):
+            data = {k: v.strip() if isinstance(v, str) else v for k, v in data.items()}
+            return {k: v for k, v in data.items() if v != ""}
+        return data
+
+    @model_validator(mode="after")
+    def _check_consent(self) -> "Registration":
+        missing = [c for c in REQUIRED_CONSENTS if not getattr(self, c)]
+        if missing:
+            raise ValueError("required consent not given: " + ", ".join(missing))
+        return self

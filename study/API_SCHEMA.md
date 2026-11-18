@@ -25,7 +25,9 @@ X-Device-Id: <stable per-install id>
 ```
 
 Response: `{ "ok": true }` on success (including a duplicate that was
-ignored). Any non-2xx response makes the app retry later.
+ignored). A `422` means the payload itself is refused: the app marks the
+session `blocked` and does not resend it. Any other non-2xx response makes
+the app retry later.
 
 ---
 
@@ -109,7 +111,7 @@ ignored). Any non-2xx response makes the app retry later.
 
 | Field | Type | Notes |
 |---|---|---|
-| `user_id` | string | Participant ID entered on the phone: 6+ letters/numbers, stored exactly as typed (case-sensitive). Set once per phone and kept until the user edits it. Groups sessions per participant. The participant chooses it on the onboarding form under the same rule, so it joins to the `participants` sheet. `null` only for sessions recorded before ID entry existed. |
+| `user_id` | string | Participant ID entered on the phone: 6+ letters/numbers, stored exactly as typed (case-sensitive). Set once per phone and kept until the user edits it. Groups sessions per participant. The participant chooses it on the onboarding form under the same rule, so it joins to the server's `participants` table. Sessions recorded before ID entry existed have `null` here; the server refuses them (`422`), so they stay on the phone. |
 | `session_id` | string | Unique **per device**, not globally (it is the start time in ms). Use `(user_id, session_id)` as the key. |
 | `variant` | `"A"` \| `"B"` | **Required.** A = dimming only, B = baseline overlay only. Chosen by the participant on the home screen; each participant uses one version for the whole study, so this puts their sessions in the A or B group. The app also has `"C"` (both), hidden from participants (decision of 15 Oct 2026) — sessions with `C` come only from internal testing and are excluded from analysis. |
 | `app_version` | string | Build name + number. |
@@ -142,7 +144,9 @@ temperature, app_version` (+ `variant`). Against what the app actually records:
 ## Database tables
 
 As built in `backend/app/models.py`. Identity (names, emails) is kept out of
-all of these — see the plan's note on the restricted linking table.
+all of these: the onboarding form's registrations go in `participants`
+(consent and demographics) and `participant_identities` (name, email,
+signature — the restricted linking list). See `backend/README.md`.
 
 ```
 sessions        (user_id, session_id, variant, app_version, device_id,
@@ -171,6 +175,7 @@ flattened into `sessions`, so most analysis queries only touch one table.
 | Clean or gap-only session | `200 {"ok": true}` |
 | Same `(user_id, session_id)` again | `200 {"ok": true, "duplicate": true}` — first copy kept |
 | Payload breaks a rule (bad `user_id` or `variant`, events out of order, `is_valid: false` without gaps, missing timestamps, no events) | `422` with the reason |
+| `user_id` has no onboarding registration, when the server runs with `REQUIRE_REGISTERED_USER=true` (to be turned on before recruiting) | `422` `user_id is not registered`. Exact match, case included. The app should tell the participant to check their ID. |
 
 A `422` will never succeed on retry; see the note for the app below.
 
@@ -178,16 +183,13 @@ A `422` will never succeed on retry; see the note for the app below.
 
 ## Status in the app
 
-The app builds and queues this payload now (`lib/services/upload_payload.dart`,
-`lib/services/upload_service.dart`). Every field above is produced. Only the
-server address is missing: until it is set, finished sessions wait in the
-phone's `upload_queue` table and nothing is lost.
+Built (`lib/services/upload_payload.dart`, `lib/services/upload_service.dart`)
+and every field above is produced. Since 20 October 2026 the app follows the
+decision of 15 October: clean and gap-only sessions are sent, every other
+integrity failure is marked `blocked` in the phone's `upload_queue` and never
+sent, and a `422` from the server also marks the session `blocked` instead of
+retrying it.
 
-Today every session that fails the integrity check is marked `blocked` in the
-queue and never sent, gaps included. Per the decision of 15 October 2026 this
-changes: gap-only sessions will be sent with `is_valid: false`, and only the
-other failures stay `blocked`. Not yet implemented in the app.
-
-The app currently retries every non-2xx response. A `422` means the payload
-itself is refused, so retrying it changes nothing: the app should mark such a
-session `blocked` (keeping the server's message) instead of `pending`.
+The server is to be hosted at `https://postureguard.test.sapienzaapps.it`;
+build the app with `--dart-define=API_BASE_URL=` set to that address. Until
+then, finished sessions wait in the `upload_queue` and nothing is lost.
