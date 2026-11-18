@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config.dart';
 import 'database_service.dart';
+import 'participant_service.dart';
 import 'telemetry_integrity_gate.dart';
 import 'upload_payload.dart';
 
@@ -43,7 +44,8 @@ class UploadService {
   /// Run once at app start, before [flush]:
   /// - a session still marked active was killed mid-way (crash, force-close);
   ///   build its summary from the events already saved and queue it.
-  /// - blocked sessions are re-checked, since the gate rules may have changed.
+  /// - blocked sessions are re-checked, since the gate rules may have changed;
+  ///   ones refused as unregistered are retried under the current ID.
   static Future<void> recoverOnStartup() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -60,7 +62,8 @@ class UploadService {
         }
         await prefs.remove(_activeSessionKey);
       }
-      await DatabaseService.requeueBlockedUploads();
+      await DatabaseService.requeueBlockedUploads(
+          currentUserId: await ParticipantService.get());
     } catch (e) {
       debugPrint('UploadService: startup recovery failed: $e');
     }

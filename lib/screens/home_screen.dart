@@ -21,6 +21,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
   bool _loaded = false;
   FeedbackVariant? _variant;
   String? _participantId;
+  bool _idNotRegistered = false;
 
   @override
   void initState() {
@@ -33,7 +34,9 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
     final calibration = await CalibrationService.load();
     final variant = await VariantService.get();
     final participantId = await ParticipantService.get();
-    unawaited(UploadService.flush());
+    // The server's answer arrives only after the flush, so check again then.
+    unawaited(UploadService.flush().then((_) => _checkRegistration()));
+    unawaited(_checkRegistration());
     if (mounted) {
       setState(() {
         _variant = variant;
@@ -42,6 +45,16 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
         _hasCalibration = calibration != null;
         _loaded = true;
       });
+    }
+  }
+
+  /// Whether the server has refused this phone's current ID as unregistered.
+  Future<void> _checkRegistration() async {
+    final ids = await DatabaseService.getUnregisteredUserIds();
+    final id = await ParticipantService.get();
+    final refused = id != null && ids.contains(id);
+    if (mounted && refused != _idNotRegistered) {
+      setState(() => _idNotRegistered = refused);
     }
   }
 
@@ -150,6 +163,40 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
     if (saved == null) return;
     final id = await ParticipantService.set(saved);
     if (id != null && mounted) setState(() => _participantId = id);
+    await _checkRegistration();
+  }
+
+  /// Shown when the server refused sessions under this ID: the participant
+  /// typed an ID that doesn't match their sign-up form, so nothing of theirs
+  /// reaches the study until they fix it.
+  Widget _buildNotRegisteredWarning() {
+    return Material(
+      color: Colors.orange.withValues(alpha: 0.12),
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: _showParticipantIdDialog,
+        borderRadius: BorderRadius.circular(12),
+        child: const Padding(
+          padding: EdgeInsets.all(12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Icons.warning_amber_rounded, color: Colors.orange),
+              SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  "This participant ID isn't registered, so your sessions "
+                  "can't be sent to the study. Check that it matches the ID "
+                  'from the sign-up form exactly (upper and lower case '
+                  'matter), then tap here to correct it.',
+                  style: TextStyle(fontSize: 13),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildParticipantRow() {
@@ -262,6 +309,10 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
             ),
             const SizedBox(height: 12),
             if (_loaded) _buildParticipantRow(),
+            if (_loaded && _idNotRegistered) ...[
+              const SizedBox(height: 8),
+              _buildNotRegisteredWarning(),
+            ],
 
             const SizedBox(height: 32),
 

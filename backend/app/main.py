@@ -35,8 +35,8 @@ IDENTITY_FIELDS = ("full_name", "email", "signature", "signed_date")
 
 def require_registered() -> bool:
     """REQUIRE_REGISTERED_USER=true refuses sessions whose user_id has no
-    onboarding registration. Off by default so test devices can upload
-    before anyone has registered; turn it on before recruiting."""
+    onboarding registration. docker-compose.yml turns it on by default;
+    unset (local development, tests) it is off."""
     return os.environ.get("REQUIRE_REGISTERED_USER", "").lower() in ("1", "true", "yes")
 
 
