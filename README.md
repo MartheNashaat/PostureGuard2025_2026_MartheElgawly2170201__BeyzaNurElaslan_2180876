@@ -34,7 +34,7 @@ Phone-position violations suppress all body checks while active. Perspective dis
 
 ### Scoring
 
-Every frame produces an overall score (0–100 %) averaged from seven per-metric scores. A 30-frame rolling window smooths the score for the UI. EMA smoothing (α = 0.25) on the NTS value prevents single noisy frames from flipping the phone-position state. All violations use entry/exit hysteresis bands (65% exit threshold) to eliminate per-frame flickering.
+Every frame produces an overall score (0–100 %) averaged from seven per-metric scores. A 30-frame rolling window smooths the score for the UI. Time-based EMA smoothing (time constant 0.186 s, so it behaves the same at any frame rate) on the NTS value prevents single noisy frames from flipping the phone-position state. All violations use entry/exit hysteresis bands (65% exit threshold) to eliminate per-frame flickering.
 
 | Score | Label |
 |-------|-------|
@@ -48,13 +48,13 @@ Every frame produces an overall score (0–100 %) averaged from seven per-metric
 
 ### Feedback variants
 
-Three buttons on the home screen choose the feedback. No session starts until one is chosen, and every session records which one was active.
+Buttons on the home screen choose the feedback. Participants see only A and B: C is hidden for the study (decision of 15 October 2026) but still works in code. No session starts until one is chosen, and every session records which one was active.
 
 | Variant | Feedback |
 |---------|----------|
 | **A — Dimming** | Screen dims |
 | **B — Baseline** | Ghost of your calibrated posture drawn over other apps |
-| **C — Both** | Dimming and the ghost overlay together |
+| **C — Both** | Dimming and the ghost overlay together (hidden from participants; internal testing only) |
 
 Feedback fires when posture stays bad (score below 50 %) for 5 seconds while the app is in picture-in-picture, or when the phone angle stays bad for 5 seconds. Dimming uses the system brightness API: brightness steps down by 10 per 200 ms to a floor of 5, and is fully restored as soon as posture corrects. Voice alerts, vibration and the coloured border are the same in all three variants.
 
@@ -72,7 +72,7 @@ Before the first session the app asks for a participant ID: at least 6 letters/n
 - **Early-warning badges** — soft Head Rise / Head Drop indicators fire before a hard violation triggers
 - **Rule chips** — per-metric colour chips (Shoulders · Head Tilt · Hunching) hidden when phone position is bad
 - **Good-posture streak** — consecutive seconds at ≥ 80 %, displayed as a live counter and logged per session
-- **Three feedback variants** — dimming (A), baseline overlay (B), or both (C), chosen on the home screen
+- **Feedback variants** — dimming (A) or baseline overlay (B), chosen on the home screen; a combined variant (C) exists for internal testing
 - **Screen dimming** via system brightness API (not an overlay tint)
 - **Ghost skeleton overlay** — draws your baseline skeleton on top of any app via `SYSTEM_ALERT_WINDOW`, 5 s after bad posture starts
 - **Picture-in-Picture (PiP)** — compact floating window; monitoring continues while you use other apps
@@ -81,7 +81,7 @@ Before the first session the app asks for a participant ID: at least 6 letters/n
 - **Android Foreground Service** — OS cannot kill the monitoring process; a notification keeps it alive
 - **Session history** stored locally in SQLite — per-second posture log, overall score, time in each zone, longest streak
 - **Device metrics** — battery, temperature, CPU and thermal status sampled every 15 s during each session
-- **Telemetry integrity check** — every session is checked for gaps and missing or out-of-order timestamps before upload; failing sessions stay on the phone
+- **Telemetry integrity check** — every session is checked for gaps and missing or out-of-order timestamps before upload; sessions whose only defect is gaps are uploaded with their gap count, any other failure stays on the phone
 - **Study upload** — finished sessions are queued and sent to the study server, retried when offline
 - **Session charts** rendered with fl_chart
 - **Dark mode** support throughout
@@ -206,9 +206,10 @@ android/
     ├── MainActivity.kt
     └── OverlayService.kt         # Native foreground overlay service
 
-test/                             # Unit tests (integrity check, payload, metrics, participant ID)
+test/                             # Unit tests (integrity check, upload rule, payload, metrics, participant ID)
 integration_test/                 # On-device frame-rate benchmark
-study/                            # Study plan, API schema, onboarding form + backend, results
+study/                            # Study plan, API schema, onboarding form, results
+backend/                          # Study server: session upload, registration, serves the form (see backend/README.md)
 ```
 
 ---
@@ -220,6 +221,8 @@ study/                            # Study plan, API schema, onboarding form + ba
 | `google_mlkit_pose_detection` | On-device skeleton landmark detection |
 | `camera` | Camera preview and frame stream (CameraX / NV21) |
 | `sensors_plus` | Accelerometer data |
+| `flutter_tts` | Voice alerts |
+| `vibration` | Vibration alerts |
 | `flutter_background_service` | Android foreground service |
 | `flutter_local_notifications` | Foreground service notification channel |
 | `sqflite` | Local session history database |

@@ -1,22 +1,43 @@
 """PostureGuard study server.
 
-    POST /api/sessions   one finished session, as in study/API_SCHEMA.md
-    GET  /health         liveness check
+    POST /api/sessions       one finished session, as in study/API_SCHEMA.md
+    POST /api/participants   one onboarding form submission
+    GET  /onboarding         the onboarding form itself
+    GET  /health             liveness check
 
 Run locally:  uvicorn app.main:app --reload   (from the backend/ folder)
 """
 
+import os
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Optional
 
-from fastapi import Depends, FastAPI, Header
+from fastapi import Body, Depends, FastAPI, Header, HTTPException
+from fastapi.responses import FileResponse, JSONResponse
+from pydantic import ValidationError
 from sqlalchemy import insert, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session as DbSession
 
 from . import models
 from .db import SessionLocal, engine
-from .schemas import SessionUpload
+from .schemas import Registration, SessionUpload
+
+# Served at /onboarding. In Docker, compose mounts the repo's copy here.
+ONBOARDING_FORM = Path(os.environ.get(
+    "ONBOARDING_FORM",
+    Path(__file__).resolve().parents[2] / "study" / "participant_onboarding.html",
+))
+
+IDENTITY_FIELDS = ("full_name", "email", "signature", "signed_date")
+
+
+def require_registered() -> bool:
+    """REQUIRE_REGISTERED_USER=true refuses sessions whose user_id has no
+    onboarding registration. Off by default so test devices can upload
+    before anyone has registered; turn it on before recruiting."""
+    return os.environ.get("REQUIRE_REGISTERED_USER", "").lower() in ("1", "true", "yes")
 
 
 @asynccontextmanager
@@ -42,6 +63,51 @@ def health():
     return {"ok": True}
 
 
+@app.get("/onboarding", include_in_schema=False)
+def onboarding_form():
+    if not ONBOARDING_FORM.is_file():
+        raise HTTPException(404, "onboarding form not installed")
+    return FileResponse(ONBOARDING_FORM, media_type="text/html")
+
+
+def _refuse(status: int, error: str):
+    # The form reads {"ok": false, "error": ...} whatever the status code.
+    return JSONResponse({"ok": False, "error": error}, status_code=status)
+
+
+@app.post("/api/participants")
+def register_participant(body: dict = Body(...), db: DbSession = Depends(get_db)):
+    try:
+        reg = Registration.model_validate(body)
+    except ValidationError as e:
+        if any(err["loc"][:1] == ("user_id",) for err in e.errors()):
+            return _refuse(422, "invalid user_id")
+        return _refuse(422, "; ".join(err["msg"] for err in e.errors()))
+
+    def duplicate():
+        return db.execute(select(models.Participant.user_id).filter_by(
+            user_id_lower=reg.user_id.lower())).first() is not None
+
+    if duplicate():
+        # Participants choose their own ID, so this does happen. The form
+        # asks them to pick another one.
+        return _refuse(409, "duplicate user_id")
+
+    data = reg.model_dump()
+    identity = {k: data.pop(k) for k in IDENTITY_FIELDS}
+    db.add(models.Participant(user_id_lower=reg.user_id.lower(), **data))
+    db.add(models.ParticipantIdentity(user_id=reg.user_id, **identity))
+    try:
+        db.commit()
+    except IntegrityError:
+        # Two people submitted the same ID at the same moment.
+        db.rollback()
+        if duplicate():
+            return _refuse(409, "duplicate user_id")
+        raise
+    return {"ok": True}
+
+
 @app.post("/api/sessions")
 def upload_session(
     body: SessionUpload,
@@ -49,6 +115,11 @@ def upload_session(
     x_device_id: Optional[str] = Header(default=None, max_length=64),
 ):
     key = (body.user_id, body.session_id)
+
+    # Exact match, case included: the app stores the ID as typed, so a
+    # session from "Tiger42X" must not count for registered "Tiger42x".
+    if require_registered() and db.get(models.Participant, body.user_id) is None:
+        raise HTTPException(422, "user_id is not registered")
 
     # The app retries until it gets a 2xx, so the same session can arrive
     # twice after a lost response. Answer ok and keep the first copy.

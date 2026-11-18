@@ -110,7 +110,7 @@ them comes from the user's other apps, not from PostureGuard.
   comparison between frame rates holds, but the sweep's absolute CPU figures
   are higher than a release build would show (release in PiP: 11–15% vs
   19.2% in the sweep).
-- **Idle CPU was higher than in-use CPU** (run C 15.1% vs run B 11.0%) for the
+- **Idle CPU was higher than in-use CPU** (run C 15.1% vs run B 11.1%) for the
   same work. The likely cause is CPU frequency scaling: an idle phone runs its
   cores slower, so each frame takes a larger share of time. In run C, CPU also
   crept from ~11% to ~17% over the hour, which run B did not show. Not

@@ -1,5 +1,6 @@
-# API + PostgreSQL. Put the password in backend/.env (not committed):
+# API + PostgreSQL. Put the settings in backend/.env (not committed):
 #   POSTGRES_PASSWORD=change-me
+#   REQUIRE_REGISTERED_USER=false   # set true before recruiting
 # then: docker compose up -d --build
 services:
   db:
@@ -21,10 +22,16 @@ services:
     restart: unless-stopped
     environment:
       DATABASE_URL: postgresql+psycopg://postureguard:${POSTGRES_PASSWORD}@db:5432/postureguard
+      REQUIRE_REGISTERED_USER: ${REQUIRE_REGISTERED_USER:-false}
+      ONBOARDING_FORM: /srv/onboarding.html
+    volumes:
+      # Served at /onboarding; a git pull updates it without a rebuild.
+      - ../study/participant_onboarding.html:/srv/onboarding.html:ro
     depends_on:
       db:
         condition: service_healthy
-    # Local only for now; HTTPS (Nginx) in front of this comes next.
+    # Reachable from this machine only: the host's reverse proxy, on the
+    # same machine, terminates HTTPS and forwards here.
     ports:
       - "127.0.0.1:8000:8000"
 
